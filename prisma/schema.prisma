@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      UserRole @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Transaction {
+  id                         String         @id @default(cuid())
+  transactionId              String
+  transactionInitiatedTime   DateTime
+  frmsisdn                   String
+  tomsisdn                   String
+  frName                     String?
+  toName                     String?
+  frProfile                  String
+  toProfile                  String
+  transactionType            String
+  originalAmount             Float
+  fee                        Float
+  commissionAll              Float
+  merchantsOnlineCashIn      String
+  importSessionId            String?
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+  commissionDistributeur     Float?
+  commissionMarchand         Float?
+  commissionRevendeur        Float?
+  commissionSousDistributeur Float?
+  importSession              ImportSession? @relation(fields: [importSessionId], references: [id])
+
+  @@map("transactions")
+  @@unique([transactionId, importSessionId])
+}
+
+model ImportSession {
+  id           String        @id @default(cuid())
+  fileName     String
+  fileSize     Int
+  totalRows    Int
+  validRows    Int
+  importedRows Int
+  status       ImportStatus  @default(SUCCESS)
+  errorMessage String?
+  importedAt   DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+
+  @@map("import_sessions")
+}
+
+enum ImportStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+  CANCELLED
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}

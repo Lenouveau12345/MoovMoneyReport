@@ -1,0 +1,2 @@
+transaction_id,transaction_initiated_time,frmsisdn,tomsisdn,fr_profile,to_profile,transaction_type,original_amount,fee,commission_all,commission_distributeur,commission_sous_distributeur,commission_revendeur,commission_marchand,msisdn_marchand
+TXN001,02/05/2025 00:03:00,237123456789,237987654321,USER,USER,TRANSFER,1000.0,50.0,25.0,10.0,0.0,5.0,10.0,N

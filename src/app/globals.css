@@ -2,14 +2,23 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0a0a0a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  /* Primary brand (orange) */
+  --color-primary: #ea580c; /* orange-600 */
+  --color-primary-foreground: #ffffff;
+  /* Accents aligned to black/white spectrum */
+  --color-accent: #111111;
+  --color-accent-foreground: #ffffff;
+  --color-secondary: #f5f5f5;
+  --color-secondary-foreground: #111111;
+  --color-ring: #ea580c;
 }
 
 @media (prefers-color-scheme: dark) {
