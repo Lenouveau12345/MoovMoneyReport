@@ -154,22 +154,44 @@ export async function GET(request: NextRequest) {
       throw new Error(`Erreur de base de données: ${dbError instanceof Error ? dbError.message : 'Erreur inconnue'}`);
     }
 
-    // Statistiques par date (pour les graphiques)
-    const dateStats = await prisma.$queryRaw`
-      SELECT 
-        DATE(transactionInitiatedTime) as date,
-        COUNT(*) as transactionCount,
-        SUM(originalAmount) as totalAmount,
-        SUM(fee) as totalFees,
-        SUM(commissionAll) as totalCommissions,
-        AVG(originalAmount) as averageAmount
-      FROM transactions 
-      WHERE ${startDate ? `transactionInitiatedTime >= '${startDate}'` : '1=1'}
-        AND ${endDate ? `transactionInitiatedTime <= '${endDate}'` : '1=1'}
-      GROUP BY DATE(transactionInitiatedTime)
-      ORDER BY date DESC
-      LIMIT 30
-    `;
+    // Statistiques par date (pour les graphiques) - Version Prisma ORM
+    const dateStats = await prisma.transaction.groupBy({
+      by: ['transactionInitiatedTime'],
+      where: {
+        ...where,
+        // Appliquer les filtres de date si présents
+        ...(startDate || endDate ? {
+          transactionInitiatedTime: {
+            ...(startDate ? { gte: new Date(startDate) } : {}),
+            ...(endDate ? { lte: new Date(endDate) } : {})
+          }
+        } : {})
+      },
+      _count: {
+        transactionId: true
+      },
+      _sum: {
+        originalAmount: true,
+        fee: true,
+        commissionAll: true
+      },
+      _avg: {
+        originalAmount: true
+      },
+      orderBy: {
+        transactionInitiatedTime: 'desc'
+      },
+      take: 30
+    }).then(results => 
+      results.map(item => ({
+        date: item.transactionInitiatedTime.toISOString().split('T')[0],
+        transactionCount: item._count.transactionId,
+        totalAmount: Number(item._sum.originalAmount || 0),
+        totalFees: Number(item._sum.fee || 0),
+        totalCommissions: Number(item._sum.commissionAll || 0),
+        averageAmount: Number(item._avg.originalAmount || 0)
+      }))
+    );
 
     // Statistiques par type de transaction
     const typeStats = await prisma.transaction.groupBy({

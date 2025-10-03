@@ -61,6 +61,20 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose, p
     }
   }, [isOpen]);
 
+  // Fermer avec la touche Échap
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, onClose]);
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
       year: 'numeric',
@@ -92,27 +106,47 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose, p
   } : {};
 
   return (
-    <div 
-      className={`fixed z-50 transition-all duration-200 ${
-        isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
-      }`}
-      style={tooltipStyle}
-    >
-      {/* Tooltip Arrow */}
-      <div className="absolute -top-2 left-4 w-4 h-4 bg-white border-l-2 border-t-2 border-orange-200 transform rotate-45"></div>
+    <>
+      {/* Overlay pour fermer en cliquant à l'extérieur */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/20"
+          onClick={onClose}
+        />
+      )}
       
-      {/* Tooltip Content */}
-      <div className="bg-white border-2 border-orange-200 rounded-xl shadow-2xl max-w-4xl w-[600px] overflow-hidden">
+      <div 
+        className={`fixed z-50 transition-all duration-200 ${
+          isOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'
+        }`}
+        style={tooltipStyle}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Tooltip Arrow */}
+        <div className="absolute -top-2 left-4 w-4 h-4 bg-white border-l-2 border-t-2 border-orange-200 transform rotate-45"></div>
+        
+        {/* Tooltip Content */}
+        <div className="bg-white border-2 border-orange-200 rounded-xl shadow-2xl max-w-4xl w-[600px] overflow-hidden">
         {/* Header compact */}
         <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-              <FileText className="w-4 h-4" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold">Détails Transaction</h3>
+                <p className="text-sm text-orange-100 font-mono">{transaction.transactionId}</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-bold">Détails Transaction</h3>
-              <p className="text-sm text-orange-100 font-mono">{transaction.transactionId}</p>
-            </div>
+            <Button
+              onClick={onClose}
+              variant="ghost"
+              size="sm"
+              className="text-white hover:bg-white/20 hover:text-white p-2 h-8 w-8"
+            >
+              <X className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
@@ -252,5 +286,6 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose, p
         </div>
       </div>
     </div>
+    </>
   );
 }

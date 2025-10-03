@@ -185,7 +185,19 @@ export default function TransactionsView() {
     fetchTransactionTypes();
     fetchProfiles();
     fetchTransactions();
-  }, [filters.page, filters.limit]);
+  }, [
+    filters.page,
+    filters.limit,
+    filters.startDate,
+    filters.endDate,
+    filters.transactionId,
+    filters.frmsisdn,
+    filters.tomsisdn,
+    filters.frProfile,
+    filters.toProfile,
+    filters.transactionType,
+    filters.search
+  ]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({
@@ -198,7 +210,6 @@ export default function TransactionsView() {
   const handleSearch = () => {
     console.log('Recherche lancée avec filtres:', filters);
     setFilters(prev => ({ ...prev, page: 1 }));
-    fetchTransactions();
   };
 
   const handlePageChange = (newPage: number) => {
@@ -572,7 +583,7 @@ export default function TransactionsView() {
                             if (!isModalOpen) {
                               handleCloseModal();
                             }
-                          }, 100);
+                          }, 200);
                         }}
                       >
                         <td className="p-2 font-mono text-xs group-hover:text-orange-700">
