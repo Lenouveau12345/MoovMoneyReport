@@ -27,6 +27,7 @@ interface ProcessResult {
   totalRows: number;
   validTransactions: number;
   insertedTransactions: number;
+  duplicatesSkipped: number;
   errors: string[];
   importSessionId: string;
 }
@@ -302,8 +303,11 @@ export default function TwoStepImport() {
               </div>
               <div>
                 <p><strong>Transactions importées:</strong> {processResult.insertedTransactions}</p>
-                <p><strong>Session ID:</strong> {processResult.importSessionId}</p>
+                <p><strong>Doublons ignorés:</strong> {processResult.duplicatesSkipped}</p>
               </div>
+            </div>
+            <div className="mt-2 text-sm">
+              <p><strong>Session ID:</strong> {processResult.importSessionId}</p>
             </div>
             
             {processResult.errors.length > 0 && (
