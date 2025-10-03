@@ -264,7 +264,7 @@ export default function BigFileUploadV2({ onImportSuccess }: BigFileUploadV2Prop
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p><strong>Lignes traitées:</strong> {result.totalRows.toLocaleString()}</p>
+                <p><strong>Lignes traitées:</strong> {result.validTransactions.toLocaleString()}</p>
                 <p><strong>Transactions valides:</strong> {result.validTransactions.toLocaleString()}</p>
               </div>
               <div>

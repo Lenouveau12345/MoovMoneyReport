@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Readable } from 'stream';
 import { parse } from 'csv-parse';
-import Database from 'better-sqlite3';
-import { join } from 'path';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,8 +11,6 @@ const BATCH_SIZE = 10000; // 10k lignes par batch comme suggéré
 const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB max
 const MAX_ROWS = 10000000; // 10 millions de lignes max
 
-// Chemin vers la base de données
-const DB_PATH = join(process.cwd(), 'prisma', 'dev.db');
 
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -42,83 +39,28 @@ export async function POST(request: NextRequest) {
     console.log('Taille:', file.size, 'bytes');
     console.log('Taille max autorisée:', MAX_FILE_SIZE, 'bytes');
 
-    // Initialiser better-sqlite3
-    const db = new Database(DB_PATH);
-    
-    // Activer les optimisations SQLite
-    db.pragma('journal_mode = WAL');
-    db.pragma('synchronous = NORMAL');
-    db.pragma('cache_size = 10000');
-    db.pragma('temp_store = MEMORY');
-    db.pragma('mmap_size = 268435456'); // 256MB
+    // Compter les transactions existantes (Neon)
+    const existingCount = await prisma.transaction.count();
+    console.log('Transactions existantes:', existingCount);
 
-    // Compter les transactions existantes
-    const existingCount = db.prepare('SELECT COUNT(*) as count FROM transactions').get() as { count: number };
-    console.log('Transactions existantes:', existingCount.count);
-
-    // Créer une session d'import
-    const insertSession = db.prepare(`
-      INSERT INTO import_sessions (id, fileName, fileSize, totalRows, validRows, importedRows, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    
-    const sessionId = `import_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
-    
-    insertSession.run(
-      sessionId,
-      file.name,
-      file.size,
-      0, // Sera mis à jour
-      0,
-      0,
-      'SUCCESS',
-      now,
-      now
-    );
-
-    // Préparer les requêtes optimisées
-    const insertTransaction = db.prepare(`
-      INSERT OR IGNORE INTO transactions (
-        id, transactionId, transactionInitiatedTime, frmsisdn, tomsisdn,
-        frProfile, toProfile, transactionType, originalAmount, fee,
-        commissionAll, merchantsOnlineCashIn, importSessionId, createdAt, updatedAt,
-        commissionDistributeur, commissionMarchand, commissionRevendeur, commissionSousDistributeur
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const updateSession = db.prepare(`
-      UPDATE import_sessions 
-      SET totalRows = ?, validRows = ?, importedRows = ?, updatedAt = ?
-      WHERE id = ?
-    `);
-
-    // Transaction groupée pour les performances
-    const insertMany = db.transaction((transactions: any[]) => {
-      for (const transaction of transactions) {
-        insertTransaction.run(
-          transaction.id,
-          transaction.transactionId,
-          transaction.transactionInitiatedTime,
-          transaction.frmsisdn,
-          transaction.tomsisdn,
-          transaction.frProfile,
-          transaction.toProfile,
-          transaction.transactionType,
-          transaction.originalAmount,
-          transaction.fee,
-          transaction.commissionAll,
-          transaction.merchantsOnlineCashIn,
-          transaction.importSessionId,
-          transaction.createdAt,
-          transaction.updatedAt,
-          transaction.commissionDistributeur,
-          transaction.commissionMarchand,
-          transaction.commissionRevendeur,
-          transaction.commissionSousDistributeur
-        );
+    // Créer une session d'import (Neon)
+    const session = await prisma.importSession.create({
+      data: {
+        fileName: file.name,
+        fileSize: file.size,
+        totalRows: 0,
+        validRows: 0,
+        importedRows: 0,
+        status: 'SUCCESS',
       }
     });
+    const sessionId = session.id;
+
+    // Fonction d'insertion par lots (Neon)
+    const insertMany = async (transactions: any[]) => {
+      const result = await prisma.transaction.createMany({ data: transactions, skipDuplicates: true });
+      return result.count ?? 0;
+    };
 
     // Convertir le fichier en stream
     const stream = Readable.fromWeb(file.stream() as any);
@@ -172,8 +114,8 @@ export async function POST(request: NextRequest) {
             // Traiter le batch quand il est plein
             if (batch.length >= BATCH_SIZE) {
               try {
-                insertMany(batch);
-                insertedCount += batch.length;
+                const insertedNow = await insertMany(batch);
+                insertedCount += insertedNow;
                 batch = [];
                 
                 // Log du progrès toutes les 100k lignes
@@ -196,20 +138,23 @@ export async function POST(request: NextRequest) {
         try {
           // Traiter le dernier batch
           if (batch.length > 0) {
-            insertMany(batch);
-            insertedCount += batch.length;
+            const insertedNow = await insertMany(batch);
+            insertedCount += insertedNow;
           }
 
-          // Mettre à jour la session d'import
-          updateSession.run(
-            rowCount,
-            validCount,
-            insertedCount,
-            new Date().toISOString(),
-            sessionId
-          );
+          // Mettre à jour la session d'import (Neon)
+          await prisma.importSession.update({
+            where: { id: sessionId },
+            data: {
+              totalRows: rowCount,
+              validRows: validCount,
+              importedRows: insertedCount,
+              status: 'SUCCESS',
+              updatedAt: new Date(),
+            }
+          });
 
-          const finalCount = db.prepare('SELECT COUNT(*) as count FROM transactions').get() as { count: number };
+          const finalCount = await prisma.transaction.count();
           const totalTime = (Date.now() - startTime) / 1000;
           const rate = rowCount / totalTime;
 
@@ -217,11 +162,9 @@ export async function POST(request: NextRequest) {
           console.log('Lignes traitées:', rowCount.toLocaleString());
           console.log('Transactions valides:', validCount.toLocaleString());
           console.log('Transactions insérées:', insertedCount.toLocaleString());
-          console.log('Total final:', finalCount.count.toLocaleString());
+          console.log('Total final:', finalCount.toLocaleString());
           console.log('Temps total:', totalTime.toFixed(2), 'secondes');
           console.log('Vitesse:', rate.toFixed(0), 'lignes/seconde');
-
-          db.close();
 
           resolve(NextResponse.json({
             message: 'Fichier CSV importé avec succès (mode ultra-rapide)',
@@ -229,23 +172,21 @@ export async function POST(request: NextRequest) {
             totalRows: rowCount,
             validTransactions: validCount,
             insertedTransactions: insertedCount,
-            existingTransactions: existingCount.count,
-            finalTransactions: finalCount.count,
-            newTransactionsAdded: finalCount.count - existingCount.count,
+            existingTransactions: existingCount,
+            finalTransactions: finalCount,
+            newTransactionsAdded: insertedCount,
             duplicatesIgnored: validCount - insertedCount,
             processingTime: totalTime,
             processingRate: rate,
           }));
         } catch (error) {
           console.error('Erreur lors de la finalisation:', error);
-          db.close();
           reject(error);
         }
       });
 
       parser.on('error', function(error) {
         console.error('Erreur du parser CSV:', error);
-        db.close();
         reject(error);
       });
 

@@ -95,11 +95,9 @@ export async function POST(request: NextRequest) {
             // Traiter le lot quand il est plein
             if (batch.length >= BATCH_SIZE) {
               try {
-                const inserted = await processBatch(batch);
-                insertedCount += inserted;
+                const result = await prisma.transaction.createMany({ data: batch, skipDuplicates: true });
+                insertedCount += result.count ?? 0;
                 batch = [];
-                
-                // Log du progrès
                 const progress = Math.round((rowCount / MAX_ROWS) * 100);
                 console.log(`Progrès: ${rowCount} lignes traitées, ${insertedCount} transactions insérées (${progress}%)`);
               } catch (error) {
@@ -116,8 +114,8 @@ export async function POST(request: NextRequest) {
         try {
           // Traiter le dernier lot
           if (batch.length > 0) {
-            const inserted = await processBatch(batch);
-            insertedCount += inserted;
+            const result = await prisma.transaction.createMany({ data: batch, skipDuplicates: true });
+            insertedCount += result.count ?? 0;
           }
 
           // Mettre à jour la session d'import

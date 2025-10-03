@@ -254,7 +254,7 @@ export default function CSVUpload({ onImportSuccess }: CSVUploadProps) {
               <span className="font-medium text-green-800">Import réussi !</span>
             </div>
             <div className="text-sm text-green-700 space-y-1">
-              <p>• {result.totalRows} lignes traitées</p>
+              <p>• {result.validTransactions} lignes traitées</p>
               <p>• {result.validTransactions} transactions valides</p>
               <p>• {result.insertedTransactions} transactions importées</p>
               {result.existingTransactions !== undefined && (

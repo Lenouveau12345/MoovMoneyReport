@@ -247,8 +247,8 @@ async function processFileAsync(importId: string, file: File, importSessionId: s
             // Insérer par batch
             if (batch.length >= BATCH_SIZE) {
               console.log(`[${importId}] Insertion batch de ${batch.length} transactions`);
-              await insertBatch(batch);
-              insertedTransactions += batch.length;
+              const insertedCount = await insertBatch(batch);
+              insertedTransactions += insertedCount;
               batch = [];
               
               updateProgress(`Traitement en cours... ${insertedTransactions} transactions insérées`);
@@ -295,8 +295,8 @@ async function processFileAsync(importId: string, file: File, importSessionId: s
 
     // Insérer le dernier batch
     if (batch.length > 0) {
-      await insertBatch(batch);
-      insertedTransactions += batch.length;
+      const insertedCount = await insertBatch(batch);
+      insertedTransactions += insertedCount;
     }
 
     // Mettre à jour la session d'import
@@ -355,36 +355,17 @@ async function processFileAsync(importId: string, file: File, importSessionId: s
   }
 }
 
-async function insertBatch(batch: any[]) {
+async function insertBatch(batch: any[]): Promise<number> {
   try {
-    console.log(`Insertion batch de ${batch.length} transactions en base...`);
-    // SQLite ne supporte pas skipDuplicates, utiliser upsert pour chaque transaction
-    let insertedCount = 0;
-    let errorCount = 0;
-    
-    for (const transaction of batch) {
-      try {
-        await prisma.transaction.upsert({
-          where: { transactionId_importSessionId: {
-            transactionId: transaction.transactionId,
-            importSessionId: transaction.importSessionId,
-          } },
-          update: transaction,
-          create: transaction,
-        });
-        insertedCount++;
-      } catch (err: any) {
-        console.error('Erreur insertion transaction individuelle:', err?.message || err);
-        errorCount++;
-        // Ne pas interrompre le lot; continuer pour permettre un statut PARTIAL
-      }
-    }
-    
-    console.log(`Batch inséré: ${insertedCount} transactions créées/mises à jour, ${errorCount} erreurs`);
-    // Ne pas lever d'erreur ici; laisser le traitement avancer
-    
+    console.log(`Insertion batch de ${batch.length} transactions en base (skip duplicates)...`);
+    const result = await prisma.transaction.createMany({
+      data: batch,
+      skipDuplicates: true,
+    });
+    console.log(`Batch: ${result.count} nouvelles transactions insérées (doublons ignorés automatiquement)`);
+    return result.count ?? 0;
   } catch (error) {
     console.error('Erreur lors de l\'insertion du batch:', error);
-    // Ne pas interrompre le traitement global
+    return 0;
   }
 }

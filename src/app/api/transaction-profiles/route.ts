@@ -1,56 +1,46 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { prisma } from '@/lib/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    // Récupérer les profils uniques pour FRPROFILE
-    const frProfilesResult = await prisma.transaction.groupBy({
-      by: ['frProfile'],
-      where: {
-        frProfile: {
-          not: null,
-          not: ''
-        }
+    // Récupérer toutes les transactions et extraire les profils uniques
+    const allTransactions = await prisma.transaction.findMany({
+      select: {
+        frProfile: true,
+        toProfile: true
       },
-      orderBy: {
-        frProfile: 'asc'
+      take: 10000 // Limiter pour éviter les problèmes de mémoire
+    });
+
+    // Extraire les profils uniques
+    const frProfileSet = new Set<string>();
+    const toProfileSet = new Set<string>();
+
+    allTransactions.forEach(transaction => {
+      if (transaction.frProfile && transaction.frProfile.trim() !== '') {
+        frProfileSet.add(transaction.frProfile);
+      }
+      if (transaction.toProfile && transaction.toProfile.trim() !== '') {
+        toProfileSet.add(transaction.toProfile);
       }
     });
 
-    // Récupérer les profils uniques pour TOPROFILE
-    const toProfilesResult = await prisma.transaction.groupBy({
-      by: ['toProfile'],
-      where: {
-        toProfile: {
-          not: null,
-          not: ''
-        }
-      },
-      orderBy: {
-        toProfile: 'asc'
-      }
+    // Convertir en tableaux triés
+    const frProfiles = Array.from(frProfileSet).sort((a, b) => a.localeCompare(b));
+    const toProfiles = Array.from(toProfileSet).sort((a, b) => a.localeCompare(b));
+
+    return NextResponse.json({ frProfiles, toProfiles }, {
+      headers: { 'Cache-Control': 'no-store' }
     });
-
-    const frProfiles = frProfilesResult.map(item => item.frProfile).filter(Boolean);
-    const toProfiles = toProfilesResult.map(item => item.toProfile).filter(Boolean);
-
-    console.log('Profils FR récupérés:', frProfiles);
-    console.log('Profils TO récupérés:', toProfiles);
-
-    return NextResponse.json({
-      frProfiles,
-      toProfiles
-    });
-
   } catch (error) {
     console.error('Erreur lors de la récupération des profils:', error);
-    return NextResponse.json(
-      { error: 'Erreur lors de la récupération des profils' },
-      { status: 500 }
-    );
-  } finally {
-    await prisma.$disconnect();
+    return NextResponse.json({ 
+      error: 'Erreur interne du serveur',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    }, { status: 500 });
   }
 }
+
+ 

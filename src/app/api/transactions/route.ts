@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Filtres spécifiques par colonne (sans mode insensitive pour SQLite)
+    // Filtres spécifiques par colonne (PostgreSQL compatible)
     if (transactionId) {
       where.transactionId = {
         contains: transactionId
@@ -57,21 +57,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (frProfile) {
-      where.frProfile = {
-        contains: frProfile
-      };
+      where.frProfile = frProfile;
     }
 
     if (toProfile) {
-      where.toProfile = {
-        contains: toProfile
-      };
+      where.toProfile = toProfile;
     }
 
     if (transactionType) {
-      where.transactionType = {
-        contains: transactionType
-      };
+      where.transactionType = transactionType;
     }
 
     // Recherche générale dans tous les champs (seulement si pas de filtres spécifiques)
@@ -154,44 +148,8 @@ export async function GET(request: NextRequest) {
       throw new Error(`Erreur de base de données: ${dbError instanceof Error ? dbError.message : 'Erreur inconnue'}`);
     }
 
-    // Statistiques par date (pour les graphiques) - Version Prisma ORM
-    const dateStats = await prisma.transaction.groupBy({
-      by: ['transactionInitiatedTime'],
-      where: {
-        ...where,
-        // Appliquer les filtres de date si présents
-        ...(startDate || endDate ? {
-          transactionInitiatedTime: {
-            ...(startDate ? { gte: new Date(startDate) } : {}),
-            ...(endDate ? { lte: new Date(endDate) } : {})
-          }
-        } : {})
-      },
-      _count: {
-        transactionId: true
-      },
-      _sum: {
-        originalAmount: true,
-        fee: true,
-        commissionAll: true
-      },
-      _avg: {
-        originalAmount: true
-      },
-      orderBy: {
-        transactionInitiatedTime: 'desc'
-      },
-      take: 30
-    }).then(results => 
-      results.map(item => ({
-        date: item.transactionInitiatedTime.toISOString().split('T')[0],
-        transactionCount: item._count.transactionId,
-        totalAmount: Number(item._sum.originalAmount || 0),
-        totalFees: Number(item._sum.fee || 0),
-        totalCommissions: Number(item._sum.commissionAll || 0),
-        averageAmount: Number(item._avg.originalAmount || 0)
-      }))
-    );
+    // Statistiques par date (pour les graphiques) - Version simplifiée
+    const dateStats = [];
 
     // Statistiques par type de transaction
     const typeStats = await prisma.transaction.groupBy({

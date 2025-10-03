@@ -112,65 +112,32 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Insérer les transactions dans la base de données par lots pour une meilleure performance
-    const insertedTransactions = [];
-    const batchSize = 50; // Traiter par lots de 50 transactions
+    // Insérer par lots avec skipDuplicates pour n'ajouter que les nouveaux TransactionID
+    let insertedCount = 0;
+    const batchSize = 1000; // lot plus grand côté Postgres
     const totalBatches = Math.ceil(validTransactions.length / batchSize);
-    
     for (let i = 0; i < validTransactions.length; i += batchSize) {
-      const batch = validTransactions.slice(i, i + batchSize);
-      const batchTransactions = [];
-      
-      for (const transaction of batch) {
-        try {
-          // Vérifier si la transaction existe déjà
-          const existingTransaction = await prisma.transaction.findFirst({
-            where: { 
-              transactionId: transaction.transactionId,
-              importSessionId: importSession.id
-            }
-          });
-
-          if (existingTransaction) {
-            console.log(`Transaction ${transaction.transactionId} existe déjà, ignorée`);
-            continue; // Ignorer les transactions existantes
-          }
-
-          // Créer une nouvelle transaction
-          const inserted = await prisma.transaction.upsert({
-            where: { transactionId_importSessionId: {
-              transactionId: transaction.transactionId,
-              importSessionId: importSession.id,
-            } },
-            update: {
-              ...transaction,
-              importSessionId: importSession.id,
-            },
-            create: {
-              ...transaction,
-              importSessionId: importSession.id,
-            },
-          });
-          batchTransactions.push(inserted);
-        } catch (error) {
-          console.error('Erreur lors de l\'insertion de la transaction:', error);
-        }
+      const batch = validTransactions.slice(i, i + batchSize).map(tx => ({
+        ...tx,
+        importSessionId: importSession.id,
+      }));
+      try {
+        const result = await prisma.transaction.createMany({ data: batch, skipDuplicates: true });
+        insertedCount += result.count ?? 0;
+      } catch (err) {
+        console.error('Erreur createMany:', err);
       }
-      
-      insertedTransactions.push(...batchTransactions);
-      
-      // Log du progrès
       const currentBatch = Math.floor(i / batchSize) + 1;
       const progress = Math.round((currentBatch / totalBatches) * 100);
-      console.log(`Traitement: ${currentBatch}/${totalBatches} lots (${progress}%) - ${insertedTransactions.length}/${validTransactions.length} transactions`);
+      console.log(`Traitement: ${currentBatch}/${totalBatches} lots (${progress}%) - ${insertedCount}/${validTransactions.length} insérées`);
     }
 
     // Mettre à jour la session d'import avec le nombre de transactions importées
     await prisma.importSession.update({
       where: { id: importSession.id },
       data: {
-        importedRows: insertedTransactions.length,
-        status: insertedTransactions.length === validTransactions.length ? 'SUCCESS' : 'PARTIAL',
+        importedRows: insertedCount,
+        status: insertedCount === validTransactions.length ? 'SUCCESS' : 'PARTIAL',
       }
     });
 
@@ -179,19 +146,19 @@ export async function POST(request: NextRequest) {
     console.log('=== FIN IMPORT ===');
     console.log('Transactions avant import:', existingCount);
     console.log('Transactions après import:', finalCount);
-    console.log('Nouvelles transactions ajoutées:', finalCount - existingCount);
-    console.log('Transactions ignorées (doublons):', validTransactions.length - insertedTransactions.length);
+    console.log('Nouvelles transactions ajoutées:', insertedCount);
+    console.log('Transactions ignorées (doublons):', validTransactions.length - insertedCount);
 
     return NextResponse.json({
       message: 'Fichier CSV importé avec succès',
       importSessionId: importSession.id,
       totalRows: transactions.length,
       validTransactions: validTransactions.length,
-      insertedTransactions: insertedTransactions.length,
+      insertedTransactions: insertedCount,
       existingTransactions: existingCount,
       finalTransactions: finalCount,
-      newTransactionsAdded: finalCount - existingCount,
-      duplicatesIgnored: validTransactions.length - insertedTransactions.length,
+      newTransactionsAdded: insertedCount,
+      duplicatesIgnored: validTransactions.length - insertedCount,
     });
 
   } catch (error) {

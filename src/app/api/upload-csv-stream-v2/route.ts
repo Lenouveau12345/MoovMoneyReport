@@ -73,39 +73,16 @@ export async function POST(request: NextRequest) {
 
     // Fonction pour insérer un batch de transactions
     const insertBatch = async (batch: any[]) => {
-      let inserted = 0;
-      let ignored = 0;
-      
-      for (const transaction of batch) {
-        try {
-          // Vérifier si la transaction existe déjà
-          const existingTransaction = await prisma.transaction.findFirst({
-            where: { 
-              transactionId: transaction.transactionId,
-              importSessionId: importSession.id
-            }
-          });
-
-          if (existingTransaction) {
-            ignored++;
-            continue;
-          }
-
-          // Créer la transaction
-          await prisma.transaction.create({
-            data: {
-              ...transaction,
-              importSessionId: importSession.id,
-            },
-          });
-          inserted++;
-        } catch (error) {
-          console.error('Erreur lors de l\'insertion d\'une transaction:', error);
-          // Continuer avec les autres transactions
-        }
+      try {
+        const data = batch.map(t => ({ ...t, importSessionId: importSession.id }));
+        const result = await prisma.transaction.createMany({ data, skipDuplicates: true });
+        const inserted = result.count ?? 0;
+        const ignored = batch.length - inserted;
+        return { inserted, ignored };
+      } catch (error) {
+        console.error('Erreur createMany:', error);
+        return { inserted: 0, ignored: 0 };
       }
-      
-      return { inserted, ignored };
     };
 
     // Traiter le fichier ligne par ligne

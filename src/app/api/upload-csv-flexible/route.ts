@@ -213,34 +213,19 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // Insérer les transactions par lots
-    const batchSize = 100;
+    // Insérer les transactions par lots avec skipDuplicates
+    const batchSize = 1000;
     let insertedCount = 0;
-    
     for (let i = 0; i < validTransactions.length; i += batchSize) {
-      const batch = validTransactions.slice(i, i + batchSize);
-      
-      for (const transaction of batch) {
-        try {
-          const existingTransaction = await prisma.transaction.findFirst({
-            where: { 
-              transactionId: transaction.transactionId,
-              importSessionId: importSession.id
-            }
-          });
-
-          if (!existingTransaction) {
-            await prisma.transaction.create({
-              data: {
-                ...transaction,
-                importSessionId: importSession.id,
-              },
-            });
-            insertedCount++;
-          }
-        } catch (error) {
-          console.error('Erreur lors de l\'insertion:', error);
-        }
+      const batch = validTransactions.slice(i, i + batchSize).map(tx => ({
+        ...tx,
+        importSessionId: importSession.id,
+      }));
+      try {
+        const result = await prisma.transaction.createMany({ data: batch, skipDuplicates: true });
+        insertedCount += result.count ?? 0;
+      } catch (err) {
+        console.error('Erreur createMany:', err);
       }
     }
 
@@ -267,7 +252,7 @@ export async function POST(request: NextRequest) {
       insertedTransactions: insertedCount,
       existingTransactions: existingCount,
       finalTransactions: finalCount,
-      newTransactionsAdded: finalCount - existingCount,
+      newTransactionsAdded: insertedCount,
       duplicatesIgnored: validTransactions.length - insertedCount,
     });
 

@@ -5,16 +5,16 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Récupération des types de transactions...');
     
-    // Utiliser la même méthode que l'API stats/transaction-types qui fonctionne
-    const uniqueTypes = await prisma.transaction.findMany({
-      select: {
+    // Utiliser groupBy pour récupérer les types uniques
+    const typeStats = await prisma.transaction.groupBy({
+      by: ['transactionType'],
+      _count: {
         transactionType: true
-      },
-      distinct: ['transactionType']
+      }
     });
 
     // Filtrer les valeurs vides et trier
-    const types = uniqueTypes
+    const types = typeStats
       .map(t => t.transactionType)
       .filter(type => type && type.trim() !== '')
       .sort();
