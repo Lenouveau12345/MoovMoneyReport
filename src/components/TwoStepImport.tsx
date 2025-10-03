@@ -67,8 +67,17 @@ export default function TwoStepImport() {
       const data = await response.json();
 
       if (response.ok) {
-        setUploadedFile(data);
-        console.log('Fichier uploadé:', data);
+        // Normaliser la structure de l'objet uploadedFile
+        const normalizedFile = {
+          id: data.fileId,
+          fileName: data.fileName,
+          originalName: data.originalName,
+          fileSize: data.fileSize,
+          status: data.status,
+          uploadedAt: data.uploadedAt,
+        };
+        setUploadedFile(normalizedFile);
+        console.log('Fichier uploadé:', normalizedFile);
       } else {
         setError(data.error || 'Erreur lors de l\'upload');
       }
@@ -80,18 +89,28 @@ export default function TwoStepImport() {
   };
 
   const handleProcess = async () => {
-    if (!uploadedFile) return;
+    if (!uploadedFile) {
+      console.error('Aucun fichier uploadé disponible');
+      setError('Aucun fichier uploadé disponible');
+      return;
+    }
+
+    console.log('Traitement du fichier:', uploadedFile);
+    console.log('File ID à envoyer:', uploadedFile.id);
 
     setProcessing(true);
     setError(null);
 
     try {
+      const requestBody = { fileId: uploadedFile.id };
+      console.log('Corps de la requête:', requestBody);
+
       const response = await fetch('/api/process-file', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ fileId: uploadedFile.id }),
+        body: JSON.stringify(requestBody),
       });
 
       const data = await response.json();
