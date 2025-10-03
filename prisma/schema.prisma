@@ -64,8 +64,29 @@ model ImportSession {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
+  uploadedFile UploadedFile?
 
   @@map("import_sessions")
+}
+
+model UploadedFile {
+  id          String        @id @default(cuid())
+  fileName    String
+  originalName String
+  fileSize    Int
+  mimeType    String
+  filePath    String        // Chemin vers le fichier stocké
+  status      FileStatus    @default(UPLOADED)
+  uploadedAt  DateTime      @default(now())
+  processedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Relation avec la session d'import
+  importSessionId String? @unique
+  importSession   ImportSession? @relation(fields: [importSessionId], references: [id])
+
+  @@map("uploaded_files")
 }
 
 enum ImportStatus {
@@ -73,6 +94,14 @@ enum ImportStatus {
   FAILED
   PARTIAL
   CANCELLED
+}
+
+enum FileStatus {
+  UPLOADED
+  PROCESSING
+  PROCESSED
+  FAILED
+  DELETED
 }
 
 enum UserRole {

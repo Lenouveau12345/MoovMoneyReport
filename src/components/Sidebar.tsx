@@ -39,6 +39,12 @@ const navigationItems = [
     description: 'Importer des fichiers CSV'
   },
   {
+    name: 'Import 2 Étapes',
+    href: '/import-two-steps',
+    icon: Database,
+    description: 'Upload puis traitement'
+  },
+  {
     name: 'Rapport Périodique',
     href: '/rapport-periodique',
     icon: BarChart3,

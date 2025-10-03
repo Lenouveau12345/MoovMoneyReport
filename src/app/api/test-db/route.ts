@@ -1,69 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    console.log('Test de la base de données...');
-
-    // Test de connexion
-    const connectionTest = await prisma.$queryRaw`SELECT 1 as test`;
-    console.log('Test de connexion:', connectionTest);
-
-    // Compter les transactions
-    const totalCount = await prisma.transaction.count();
-    console.log('Total transactions:', totalCount);
-
-    // Récupérer quelques exemples
-    const sampleTransactions = await prisma.transaction.findMany({
-      take: 5,
-      select: {
-        id: true,
-        transactionId: true,
-        frmsisdn: true,
-        tomsisdn: true,
-        transactionType: true,
-        originalAmount: true,
-        transactionInitiatedTime: true,
+    console.log('=== TEST CONNEXION DB ===');
+    
+    // Test de connexion basique
+    await prisma.$connect();
+    console.log('Connexion DB réussie');
+    
+    // Test de comptage
+    const count = await prisma.transaction.count();
+    console.log('Nombre de transactions:', count);
+    
+    // Test de création d'une session
+    const session = await prisma.importSession.create({
+      data: {
+        fileName: 'test-db.csv',
+        fileSize: 100,
+        totalRows: 1,
+        validRows: 1,
+        importedRows: 1,
+        status: 'SUCCESS',
       }
     });
-
-    console.log('Exemples de transactions:', sampleTransactions);
-
-    // Test de recherche simple
-    const searchTest = await prisma.transaction.findMany({
-      where: {
-        transactionId: {
-          contains: 'CE'
-        }
-      },
-      take: 3,
-      select: {
-        transactionId: true
-      }
-    });
-
-    console.log('Recherche "CE":', searchTest);
-
+    console.log('Session créée:', session.id);
+    
     return NextResponse.json({
-      success: true,
-      connectionTest,
-      totalTransactions: Number(totalCount),
-      sampleTransactions: sampleTransactions.map(t => ({
-        ...t,
-        originalAmount: Number(t.originalAmount)
-      })),
-      searchTest: searchTest.map(t => ({
-        transactionId: t.transactionId
-      })),
-      message: 'Base de données fonctionnelle'
+      message: 'Test DB réussi',
+      transactionCount: count,
+      sessionId: session.id
     });
 
   } catch (error) {
-    console.error('Erreur lors du test de la base de données:', error);
+    console.error('Erreur test DB:', error);
     return NextResponse.json({ 
-      error: 'Erreur de base de données',
-      details: error instanceof Error ? error.message : 'Erreur inconnue',
-      stack: error instanceof Error ? error.stack : undefined
+      error: 'Erreur test DB',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
     }, { status: 500 });
   }
 }
