@@ -97,6 +97,14 @@ export async function POST(request: NextRequest) {
     const transactionsToInsert = [];
     const seenTransactionIds = new Set<string>();
 
+    // Récupérer les transactionId existants en base pour éviter les doublons
+    console.log('Vérification des doublons existants en base...');
+    const existingTransactions = await prisma.transaction.findMany({
+      select: { transactionId: true }
+    });
+    const existingIds = new Set(existingTransactions.map(t => t.transactionId));
+    console.log(`Found ${existingIds.size} existing transactions in database`);
+
     // Traiter chaque ligne de données
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
@@ -112,12 +120,18 @@ export async function POST(request: NextRequest) {
         let transactionId = baseTransactionId;
         let counter = 1;
         
-        // Vérifier l'unicité dans le fichier en cours
-        while (seenTransactionIds.has(transactionId)) {
+        // Vérifier l'unicité dans le fichier en cours ET en base de données
+        while (seenTransactionIds.has(transactionId) || existingIds.has(transactionId)) {
           transactionId = `${baseTransactionId}_${counter}`;
           counter++;
         }
         seenTransactionIds.add(transactionId);
+        
+        // Si l'ID a été modifié, compter comme doublon
+        if (transactionId !== baseTransactionId) {
+          duplicatesSkipped++;
+          console.log(`Doublon détecté: ${baseTransactionId} -> ${transactionId}`);
+        }
 
         // Créer un objet transaction
         const transaction = {
