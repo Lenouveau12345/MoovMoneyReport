@@ -12,6 +12,7 @@ interface ProcessResult {
   totalRows: number;
   validTransactions: number;
   insertedTransactions: number;
+  duplicatesSkipped: number;
   errors: string[];
   importSessionId: string;
 }
@@ -91,8 +92,10 @@ export async function POST(request: NextRequest) {
     let totalRows = 0;
     let validTransactions = 0;
     let insertedTransactions = 0;
+    let duplicatesSkipped = 0;
     const errors: string[] = [];
     const transactionsToInsert = [];
+    const seenTransactionIds = new Set<string>();
 
     // Traiter chaque ligne de données
     for (let i = 1; i < lines.length; i++) {
@@ -104,9 +107,21 @@ export async function POST(request: NextRequest) {
       try {
         const values = line.split(',').map(v => v.trim());
         
+        // Générer un ID unique pour éviter les doublons
+        const baseTransactionId = values[0] || `IMPORT_${Date.now()}_${i}`;
+        let transactionId = baseTransactionId;
+        let counter = 1;
+        
+        // Vérifier l'unicité dans le fichier en cours
+        while (seenTransactionIds.has(transactionId)) {
+          transactionId = `${baseTransactionId}_${counter}`;
+          counter++;
+        }
+        seenTransactionIds.add(transactionId);
+
         // Créer un objet transaction
         const transaction = {
-          transactionId: values[0] || `IMPORT_${Date.now()}_${i}`,
+          transactionId: transactionId,
           transactionInitiatedTime: new Date(),
           frmsisdn: values[2] || '225000000000',
           tomsisdn: values[3] || '225000000000',
@@ -130,9 +145,10 @@ export async function POST(request: NextRequest) {
               data: transactionsToInsert
             });
             insertedTransactions += result.count || 0;
+            duplicatesSkipped += transactionsToInsert.length - (result.count || 0);
             transactionsToInsert.length = 0; // Vider le tableau
             
-            console.log(`Batch inséré: ${result.count} transactions`);
+            console.log(`Batch inséré: ${result.count} transactions, ${duplicatesSkipped} doublons ignorés`);
           } catch (error) {
             console.error('Erreur insertion batch:', error);
             errors.push(`Erreur batch ligne ${i}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
@@ -152,7 +168,8 @@ export async function POST(request: NextRequest) {
           data: transactionsToInsert
         });
         insertedTransactions += result.count || 0;
-        console.log(`Dernier batch inséré: ${result.count} transactions`);
+        duplicatesSkipped += transactionsToInsert.length - (result.count || 0);
+        console.log(`Dernier batch inséré: ${result.count} transactions, ${duplicatesSkipped} doublons ignorés`);
       } catch (error) {
         console.error('Erreur insertion dernier batch:', error);
         errors.push(`Erreur dernier batch: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
@@ -183,6 +200,7 @@ export async function POST(request: NextRequest) {
       insertedTransactions,
       errors,
       importSessionId: importSession.id,
+      duplicatesSkipped,
     };
 
     console.log('=== TRAITEMENT TERMINÉ ===');
