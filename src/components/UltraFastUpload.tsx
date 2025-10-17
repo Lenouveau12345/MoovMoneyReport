@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, FileText, CheckCircle, AlertCircle, Zap, Clock, Database, Rocket } from 'lucide-react';
+import ChunkedUploadControls from '@/components/ChunkedUploadControls';
 
 interface UploadResult {
   message: string;
@@ -61,10 +62,7 @@ export default function UltraFastUpload({ onImportSuccess }: UltraFastUploadProp
 
       console.log('Début de l\'upload ultra-rapide:', file.name, 'Taille:', file.size);
 
-      const response = await fetch('/api/upload-csv-ultra', {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch('/api/upload-csv-ultra', { method: 'POST', body: formData });
 
       const data = await response.json();
 
@@ -201,6 +199,17 @@ export default function UltraFastUpload({ onImportSuccess }: UltraFastUploadProp
             </>
           )}
         </Button>
+
+        {file && (
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold mb-2">Mode découpage (10 000 lignes par chunk)</h4>
+            <ChunkedUploadControls
+              file={file}
+              linesPerChunk={10000}
+              endpoint="/api/upload-csv-ultra"
+            />
+          </div>
+        )}
 
         {/* Barre de progression */}
         {uploading && (

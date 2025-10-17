@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // Configuration pour Vercel
-  serverExternalPackages: ['@prisma/client', 'better-sqlite3'],
+  serverExternalPackages: ['@prisma/client', 'better-sqlite3', 'pg', 'pg-copy-streams'],
   
   // Configuration pour les images
   images: {

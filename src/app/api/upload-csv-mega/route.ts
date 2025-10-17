@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
 import { Readable } from 'stream';
 import { parse } from 'csv-parse';
-import { prisma } from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 300; // 5 minutes max pour les très gros fichiers
+
+// Configuration ultra-optimisée pour très gros fichiers
+const BATCH_SIZE = 5000; // Batchs moyens pour équilibrer mémoire/performance
+const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB max
+const MAX_ROWS = 5000000; // 5 millions de lignes max
 
 // Fonction de validation simplifiée
 function isValidTransaction(row: any): boolean {
@@ -46,14 +51,8 @@ function transformTransaction(row: any, sessionId: string) {
   };
 }
 
-// Configuration ultra-optimisée
-const BATCH_SIZE = 10000; // 10k lignes par batch comme suggéré
-const MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2GB max
-const MAX_ROWS = 10000000; // 10 millions de lignes max
-
-
 export async function POST(request: NextRequest) {
-  const startTime = Date.now();
+  let importSessionId: string | null = null;
   
   try {
     const formData = await request.formData();
@@ -63,106 +62,95 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
     }
 
-    // Vérifier la taille du fichier
+    if (!file.name.endsWith('.csv')) {
+      return NextResponse.json({ error: 'Le fichier doit être un CSV' }, { status: 400 });
+    }
+
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json({ 
         error: `Fichier trop volumineux. Taille maximale: ${MAX_FILE_SIZE / (1024 * 1024 * 1024)}GB` 
       }, { status: 400 });
     }
 
-    if (!file.name.endsWith('.csv')) {
-      return NextResponse.json({ error: 'Le fichier doit être un CSV' }, { status: 400 });
-    }
-
-    console.log('=== DÉBUT IMPORT ULTRA-RAPIDE ===');
+    console.log('=== DÉBUT IMPORT MEGA ===');
     console.log('Fichier:', file.name);
     console.log('Taille:', file.size, 'bytes');
-    console.log('Taille max autorisée:', MAX_FILE_SIZE, 'bytes');
 
-    // Compter les transactions existantes (Neon)
+    // Compter les transactions existantes
     const existingCount = await prisma.transaction.count();
-    console.log('Transactions existantes:', existingCount);
 
-    // Créer une session d'import (Neon)
-    const session = await prisma.importSession.create({
+    // Créer une session d'import
+    const importSession = await prisma.importSession.create({
       data: {
         fileName: file.name,
         fileSize: file.size,
         totalRows: 0,
         validRows: 0,
         importedRows: 0,
-        status: 'SUCCESS',
+        status: 'PARTIAL',
       }
     });
-    const sessionId = session.id;
+    importSessionId = importSession.id;
 
-    // Fonction d'insertion par lots (Neon)
-    const insertMany = async (transactions: any[]) => {
-      const result = await prisma.transaction.createMany({ data: transactions, skipDuplicates: true });
-      return result.count ?? 0;
-    };
+    let rowCount = 0;
+    let validCount = 0;
+    let insertedCount = 0;
+    let duplicatesIgnored = 0;
+    const transactionsToInsert: any[] = [];
 
     // Convertir le fichier en stream (vrai streaming)
     const fileStream = Readable.fromWeb(file.stream() as any);
-    
-    // Parser le CSV en streaming
+
     const parser = fileStream.pipe(parse({
       columns: true,
       skip_empty_lines: true,
       trim: true,
     }));
 
-    let rowCount = 0;
-    let validCount = 0;
-    let insertedCount = 0;
-    let batch: any[] = [];
-    let headers: string[] = [];
-
     return new Promise((resolve, reject) => {
       parser.on('readable', async function() {
         let record;
         while ((record = parser.read()) !== null) {
           rowCount++;
-          
+
           // Vérifier la limite de lignes
           if (rowCount > MAX_ROWS) {
             console.log(`Limite de ${MAX_ROWS} lignes atteinte, arrêt du traitement`);
             break;
           }
 
-          // Capturer les headers
-          if (rowCount === 1) {
-            headers = Object.keys(record);
-            console.log('Headers détectés:', headers);
-          }
-
           // Valider la ligne
           if (isValidTransaction(record)) {
             validCount++;
-            batch.push(transformTransaction(record, sessionId));
-            
+            const transformed = transformTransaction(record, importSessionId!);
+            transactionsToInsert.push(transformed);
+
             // Log de debug pour les premières lignes
             if (validCount <= 5) {
               console.log(`Ligne valide ${validCount}:`, {
-                transactionId: record['Transaction ID'],
-                frmsisdn: record['FRMSISDN'],
-                tomsisdn: record['TOMSISDN'],
-                amount: record['Original Amount']
+                transactionId: transformed.transactionId,
+                frmsisdn: transformed.frmsisdn,
+                tomsisdn: transformed.tomsisdn,
+                amount: transformed.originalAmount
               });
             }
 
-            // Traiter le batch quand il est plein
-            if (batch.length >= BATCH_SIZE) {
+            // Traiter le lot quand il est plein
+            if (transactionsToInsert.length >= BATCH_SIZE) {
               try {
-                const insertedNow = await insertMany(batch);
-                insertedCount += insertedNow;
-                batch = [];
+                const result = await prisma.transaction.createMany({
+                  data: transactionsToInsert,
+                  skipDuplicates: true,
+                });
                 
-                // Log du progrès toutes les 100k lignes
-                if (rowCount % 100000 === 0) {
-                  const elapsed = (Date.now() - startTime) / 1000;
-                  const rate = rowCount / elapsed;
-                  console.log(`Progrès: ${rowCount.toLocaleString()} lignes traitées en ${elapsed.toFixed(1)}s (${rate.toFixed(0)} lignes/s)`);
+                const insertedNow = result.count ?? 0;
+                insertedCount += insertedNow;
+                duplicatesIgnored += (transactionsToInsert.length - insertedNow);
+                transactionsToInsert.length = 0; // Vider le tableau
+
+                // Log du progrès toutes les 50k lignes
+                if (rowCount % 50000 === 0) {
+                  console.log(`Progrès: ${rowCount.toLocaleString()} lignes traitées, ${insertedCount.toLocaleString()} transactions insérées`);
                 }
               } catch (error) {
                 console.error('Erreur lors du traitement du batch:', error);
@@ -177,14 +165,20 @@ export async function POST(request: NextRequest) {
       parser.on('end', async function() {
         try {
           // Traiter le dernier batch
-          if (batch.length > 0) {
-            const insertedNow = await insertMany(batch);
+          if (transactionsToInsert.length > 0) {
+            const result = await prisma.transaction.createMany({
+              data: transactionsToInsert,
+              skipDuplicates: true,
+            });
+            
+            const insertedNow = result.count ?? 0;
             insertedCount += insertedNow;
+            duplicatesIgnored += (transactionsToInsert.length - insertedNow);
           }
 
-          // Mettre à jour la session d'import (Neon)
+          // Mettre à jour la session d'import
           await prisma.importSession.update({
-            where: { id: sessionId },
+            where: { id: importSessionId! },
             data: {
               totalRows: rowCount,
               validRows: validCount,
@@ -195,30 +189,26 @@ export async function POST(request: NextRequest) {
           });
 
           const finalCount = await prisma.transaction.count();
-          const totalTime = (Date.now() - startTime) / 1000;
-          const rate = rowCount / totalTime;
+          const newTransactionsAdded = finalCount - existingCount;
 
-          console.log('=== FIN IMPORT ULTRA-RAPIDE ===');
-          console.log('Lignes traitées:', rowCount.toLocaleString());
-          console.log('Transactions valides:', validCount.toLocaleString());
-          console.log('Transactions insérées:', insertedCount.toLocaleString());
-          console.log('Total final:', finalCount.toLocaleString());
-          console.log('Temps total:', totalTime.toFixed(2), 'secondes');
-          console.log('Vitesse:', rate.toFixed(0), 'lignes/seconde');
+          console.log('=== FIN IMPORT MEGA ===');
+          console.log(`Lignes traitées: ${rowCount.toLocaleString()}`);
+          console.log(`Transactions valides: ${validCount.toLocaleString()}`);
+          console.log(`Nouvelles transactions ajoutées: ${newTransactionsAdded.toLocaleString()}`);
+          console.log(`Doublons ignorés: ${duplicatesIgnored.toLocaleString()}`);
 
           resolve(NextResponse.json({
-            message: 'Fichier CSV importé avec succès (mode ultra-rapide)',
-            importSessionId: sessionId,
+            message: 'Import mega réussi',
+            importSessionId: importSessionId,
             totalRows: rowCount,
             validTransactions: validCount,
             insertedTransactions: insertedCount,
             existingTransactions: existingCount,
             finalTransactions: finalCount,
-            newTransactionsAdded: insertedCount,
-            duplicatesIgnored: validCount - insertedCount,
-            processingTime: totalTime,
-            processingRate: rate,
+            newTransactionsAdded: newTransactionsAdded,
+            duplicatesIgnored: duplicatesIgnored,
           }));
+
         } catch (error) {
           console.error('Erreur lors de la finalisation:', error);
           reject(error);
@@ -229,15 +219,29 @@ export async function POST(request: NextRequest) {
         console.error('Erreur du parser CSV:', error);
         reject(error);
       });
-
-      // Le parser est déjà connecté via fileStream.pipe(parse(...))
     });
 
-  } catch (error) {
-    console.error('Erreur lors de l\'import CSV ultra-rapide:', error);
+  } catch (error: any) {
+    console.error('Erreur lors de l\'import mega:', error);
+    
+    // Mettre à jour la session en cas d'erreur
+    if (importSessionId) {
+      try {
+        await prisma.importSession.update({
+          where: { id: importSessionId },
+          data: {
+            status: 'FAILED',
+            errorMessage: error.message,
+            updatedAt: new Date(),
+          }
+        });
+      } catch (updateError) {
+        console.error('Erreur lors de la mise à jour de la session:', updateError);
+      }
+    }
+
     return NextResponse.json({ 
-      error: 'Erreur interne du serveur',
-      details: error instanceof Error ? error.message : 'Erreur inconnue'
+      error: error.message || 'Erreur lors de l\'import mega' 
     }, { status: 500 });
   }
 }

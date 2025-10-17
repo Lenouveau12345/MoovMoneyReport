@@ -7,6 +7,9 @@ import { Upload, Database, ArrowLeft } from "lucide-react";
 import BigFileUploadV2 from "@/components/BigFileUploadV2";
 import UltraFastUpload from "@/components/UltraFastUpload";
 import FlexibleUpload from "@/components/FlexibleUpload";
+import LocalPreviewUpload from "@/components/LocalPreviewUpload";
+import MegaUpload from "@/components/MegaUpload";
+import CopyUpload from "@/components/CopyUpload";
 import ClearDatabase from "@/components/ClearDatabase";
 import ClearImportsHistory from "@/components/ClearImportsHistory";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -15,7 +18,7 @@ import Link from "next/link";
 export default function ImportCSV() {
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedImport, setSelectedImport] = useState<'big' | 'ultra' | 'flexible'>('big');
+  const [selectedImport, setSelectedImport] = useState<'big' | 'ultra' | 'flexible' | 'local' | 'mega' | 'copy'>('big');
 
   const handleImportSuccess = () => {
     // Rafraîchir immédiatement
@@ -73,12 +76,15 @@ export default function ImportCSV() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Type d'import</label>
               <select
                 value={selectedImport}
-                onChange={(e) => setSelectedImport(e.target.value as 'big' | 'ultra' | 'flexible')}
+                onChange={(e) => setSelectedImport(e.target.value as 'big' | 'ultra' | 'flexible' | 'local' | 'mega')}
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="big">Import de Gros Fichiers (V2 - Robuste)</option>
                 <option value="ultra">Import Ultra-Rapide</option>
                 <option value="flexible">Import Flexible</option>
+                <option value="local">Import Local (Aperçu puis envoi)</option>
+                <option value="mega">Import Mega (Très Gros Fichiers)</option>
+                <option value="copy">Import COPY (Postgres)</option>
               </select>
             </div>
 
@@ -92,6 +98,15 @@ export default function ImportCSV() {
               )}
               {selectedImport === 'flexible' && (
                 <FlexibleUpload onImportSuccess={handleImportSuccess} />
+              )}
+              {selectedImport === 'local' && (
+                <LocalPreviewUpload onImportSuccess={handleImportSuccess} />
+              )}
+              {selectedImport === 'mega' && (
+                <MegaUpload onImportSuccess={handleImportSuccess} />
+              )}
+              {selectedImport === 'copy' && (
+                <CopyUpload onImportSuccess={handleImportSuccess} />
               )}
             </div>
           </CardContent>
