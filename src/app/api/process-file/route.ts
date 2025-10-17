@@ -120,19 +120,31 @@ export async function POST(request: NextRequest) {
         let transactionId = baseTransactionId;
         let counter = 1;
         
-        // Vérifier l'unicité dans le fichier en cours ET en base de données
-        while (seenTransactionIds.has(transactionId) || existingIds.has(transactionId)) {
+        // Vérifier l'unicité dans le fichier en cours
+        while (seenTransactionIds.has(transactionId)) {
           transactionId = `${baseTransactionId}_${counter}`;
           counter++;
         }
         seenTransactionIds.add(transactionId);
         
-        // Si l'ID a été modifié, compter comme doublon
-        if (transactionId !== baseTransactionId) {
+        // Si l'ID existe déjà en base de données, ignorer complètement cette transaction
+        if (existingIds.has(transactionId)) {
           duplicatesSkipped++;
-          console.log(`Doublon détecté: ${baseTransactionId} -> ${transactionId}`);
+          console.log(`Transaction ignorée (existe déjà en base): ${transactionId}`);
+          continue; // Passer à la ligne suivante sans traiter cette transaction
         }
 
+        // Valider et parser les montants
+        const originalAmount = parseFloat(values[7]);
+        const fee = parseFloat(values[8]);
+        const commissionAll = parseFloat(values[9]);
+        
+        // Vérifier que les montants sont valides
+        if (isNaN(originalAmount) || originalAmount < 0) {
+          console.log(`Montant invalide pour la ligne ${i}: ${values[7]}`);
+          continue;
+        }
+        
         // Créer un objet transaction
         const transaction = {
           transactionId: transactionId,
@@ -142,9 +154,9 @@ export async function POST(request: NextRequest) {
           frProfile: values[4] || 'IMPORT',
           toProfile: values[5] || 'IMPORT',
           transactionType: values[6] || 'Import Transaction',
-          originalAmount: parseFloat(values[7]) || 100,
-          fee: parseFloat(values[8]) || 0,
-          commissionAll: parseFloat(values[9]) || 0,
+          originalAmount: originalAmount,
+          fee: isNaN(fee) ? 0 : fee,
+          commissionAll: isNaN(commissionAll) ? 0 : commissionAll,
           merchantsOnlineCashIn: '',
           importSessionId: importSession.id,
         };

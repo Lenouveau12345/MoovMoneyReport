@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, FileText, CheckCircle, AlertCircle, Settings, Database } from 'lucide-react';
+import ChunkedUploadControls from '@/components/ChunkedUploadControls';
 
 interface UploadResult {
   message: string;
@@ -173,6 +174,17 @@ export default function FlexibleUpload({ onImportSuccess }: FlexibleUploadProps)
             </>
           )}
         </Button>
+
+        {file && (
+          <div className="mt-4">
+            <h4 className="text-sm font-semibold mb-2">Mode découpage (10 000 lignes par chunk)</h4>
+            <ChunkedUploadControls
+              file={file}
+              linesPerChunk={10000}
+              endpoint="/api/upload-csv-flexible"
+            />
+          </div>
+        )}
 
         {/* Messages d'erreur */}
         {error && (

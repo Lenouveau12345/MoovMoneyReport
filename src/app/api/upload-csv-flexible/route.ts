@@ -22,6 +22,14 @@ export async function POST(request: NextRequest) {
     console.log('Fichier:', file.name);
     console.log('Taille:', file.size, 'bytes');
 
+    // Vérifier la taille du fichier pour éviter les problèmes de mémoire
+    const MAX_FILE_SIZE_FLEXIBLE = 100 * 1024 * 1024; // 100MB max pour l'import flexible
+    if (file.size > MAX_FILE_SIZE_FLEXIBLE) {
+      return NextResponse.json({ 
+        error: `Fichier trop volumineux pour l'import flexible. Taille maximale: ${MAX_FILE_SIZE_FLEXIBLE / (1024 * 1024)}MB. Utilisez l'import de gros fichiers.` 
+      }, { status: 400 });
+    }
+
     // Lire le contenu du fichier
     const text = await file.text();
 
