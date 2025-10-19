@@ -80,7 +80,7 @@ export default function ImportCSV() {
                 onChange={(e) => setSelectedImport(e.target.value as 'big' | 'ultra' | 'flexible' | 'local' | 'mega' | 'copy' | 'smart')}
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
-                <option value="smart">🧠 Import Intelligent (Nouveau - Algorithme Optimisé) ✅</option>
+                <option value="smart">🧠 Import Intelligent (Nouveau - Algorithme Optimisé) 🚀</option>
                 <option value="big">Import de Gros Fichiers (V2 - Robuste)</option>
                 <option value="ultra">Import Ultra-Rapide</option>
                 <option value="flexible">Import Flexible</option>
