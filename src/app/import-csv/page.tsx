@@ -10,6 +10,7 @@ import FlexibleUpload from "@/components/FlexibleUpload";
 import LocalPreviewUpload from "@/components/LocalPreviewUpload";
 import MegaUpload from "@/components/MegaUpload";
 import CopyUpload from "@/components/CopyUpload";
+import SmartChunkedUpload from "@/components/SmartChunkedUpload";
 import ClearDatabase from "@/components/ClearDatabase";
 import ClearImportsHistory from "@/components/ClearImportsHistory";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -18,7 +19,7 @@ import Link from "next/link";
 export default function ImportCSV() {
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
-  const [selectedImport, setSelectedImport] = useState<'big' | 'ultra' | 'flexible' | 'local' | 'mega' | 'copy'>('big');
+  const [selectedImport, setSelectedImport] = useState<'big' | 'ultra' | 'flexible' | 'local' | 'mega' | 'copy' | 'smart'>('smart');
 
   const handleImportSuccess = () => {
     // Rafraîchir immédiatement
@@ -76,9 +77,10 @@ export default function ImportCSV() {
               <label className="block text-sm font-medium text-gray-700 mb-2">Type d'import</label>
               <select
                 value={selectedImport}
-                onChange={(e) => setSelectedImport(e.target.value as 'big' | 'ultra' | 'flexible' | 'local' | 'mega')}
+                onChange={(e) => setSelectedImport(e.target.value as 'big' | 'ultra' | 'flexible' | 'local' | 'mega' | 'copy' | 'smart')}
                 className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
+                <option value="smart">🧠 Import Intelligent (Nouveau - Algorithme Optimisé)</option>
                 <option value="big">Import de Gros Fichiers (V2 - Robuste)</option>
                 <option value="ultra">Import Ultra-Rapide</option>
                 <option value="flexible">Import Flexible</option>
@@ -90,6 +92,9 @@ export default function ImportCSV() {
 
             {/* Rendu conditionnel du composant d'import sélectionné */}
             <div className="pt-2">
+              {selectedImport === 'smart' && (
+                <SmartChunkedUpload onImportSuccess={handleImportSuccess} />
+              )}
               {selectedImport === 'big' && (
                 <BigFileUploadV2 onImportSuccess={handleImportSuccess} />
               )}
