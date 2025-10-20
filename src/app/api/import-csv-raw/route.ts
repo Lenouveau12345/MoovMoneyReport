@@ -4,17 +4,12 @@ import { insertTransactionsWithUpsert } from '@/lib/database';
 
 export const revalidate = 0;
 
-// Cette route reçoit { rows: Array<Record<string,string>> }
-// et insère directement dans la table transactions en respectant l'unicité de transactionId.
-// Aucun autre traitement n'est appliqué.
-
 function toNumber(value: string | undefined): number {
   if (!value) return 0;
   const n = Number(String(value).replace(/\s/g, '').replace(/,/g, '.'));
   return Number.isFinite(n) ? n : 0;
 }
 
-// Fonction pour détecter une colonne par ses noms possibles
 function detectColumn(row: any, possibleNames: string[]): string | null {
   for (const name of possibleNames) {
     if (row[name] !== undefined && row[name] !== null && row[name] !== '') {
@@ -34,7 +29,6 @@ export async function POST(request: NextRequest) {
     let fileSize = 0;
 
     if (contentType.includes('multipart/form-data')) {
-      // Mode fichier (chunks)
       const formData = await request.formData();
       const file = formData.get('file') as File;
       const providedSessionId = formData.get('importSessionId') as string;
@@ -47,7 +41,6 @@ export async function POST(request: NextRequest) {
       fileSize = file.size;
       importSessionId = providedSessionId || null;
 
-      // Parser le CSV du chunk
       const text = await file.text();
       const lines = text.split('\n').filter(line => line.trim());
       if (lines.length === 0) {
@@ -64,7 +57,6 @@ export async function POST(request: NextRequest) {
         return row;
       });
     } else {
-      // Mode JSON direct
       const body = await request.json();
       rows = (body?.rows ?? []) as Array<Record<string, string>>;
       fileName = body?.fileName || 'smart-import';
@@ -72,7 +64,6 @@ export async function POST(request: NextRequest) {
       importSessionId = body?.importSessionId || null;
     }
 
-    // Créer une session d'import si ce n'est pas déjà fait
     if (!importSessionId) {
       const importSession = await prisma.importSession.create({
         data: {
@@ -91,13 +82,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucune ligne fournie' }, { status: 400 });
     }
 
-    // Debug: Afficher les en-têtes disponibles
     console.log('🔍 En-têtes CSV détectés:', Object.keys(rows[0] || {}));
     console.log('📊 Nombre de lignes reçues:', rows.length);
 
-    // Mapping intelligent avec détection automatique des colonnes
     const data = rows.map((record) => {
-      // Détection automatique des colonnes principales
       const transactionId = detectColumn(record, [
         'Transaction ID', 'TransactionID', 'transactionId', 'TRANSACTION ID', 'TRANSACTION_ID',
         'ID', 'id', 'Id', 'reference', 'Reference', 'REFERENCE', 'txn_id', 'TXN_ID'
@@ -121,7 +109,6 @@ export async function POST(request: NextRequest) {
         'amount', 'Amount', 'AMOUNT', 'value', 'montant'
       ]) || '0';
       
-      // Transformation de la transaction
       const transaction = {
         transactionId: transactionId,
         transactionInitiatedTime: new Date(transactionTime || new Date()),
@@ -138,7 +125,6 @@ export async function POST(request: NextRequest) {
         merchantsOnlineCashIn: detectColumn(record, ['MSISDN_MARCHAND', 'msisdn_marchand', 'merchant_msisdn', 'merchantMsisdn', 'merchant']) || '',
       };
 
-      // Validation basique - moins stricte pour permettre l'insertion
       if (transaction.transactionId && 
           !isNaN(transaction.originalAmount) && 
           transaction.originalAmount >= 0 &&
@@ -147,7 +133,7 @@ export async function POST(request: NextRequest) {
       }
       
       return null;
-    }).filter(t => t !== null); // Filtrer les transactions valides
+    }).filter(t => t !== null);
 
     console.log('✅ Lignes valides après mapping:', data.length);
     console.log('🔍 Exemple de ligne mappée:', data[0]);
@@ -157,7 +143,6 @@ export async function POST(request: NextRequest) {
       console.log('🔍 Exemple de ligne originale:', rows[0]);
       console.log('🔍 Colonnes détectées dans la première ligne:', Object.keys(rows[0] || {}));
       
-      // Analyser pourquoi aucune ligne n'est valide
       const sampleRow = rows[0] || {};
       console.log('🔍 Analyse de la première ligne:');
       console.log('  - TransactionID détecté:', detectColumn(sampleRow, ['Transaction ID', 'TransactionID', 'transactionId', 'TRANSACTION ID', 'TRANSACTION_ID', 'ID', 'id', 'reference', 'Reference', 'REFERENCE', 'txn_id', 'TXN_ID']));
@@ -171,17 +156,12 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Ajouter la session d'import à chaque transaction
     const dataWithSession = data.map(transaction => ({
       ...transaction,
       importSessionId: importSessionId
     }));
 
-    // Insertion avec gestion des doublons compatible PostgreSQL
     const result = await insertTransactionsWithUpsert(dataWithSession);
-
-    // Note: La mise à jour de la session d'import est maintenant gérée par le composant ChunkedUploadControls
-    // qui finalise la session à la fin de tous les chunks
 
     return NextResponse.json({ 
       inserted: result.inserted,
@@ -189,7 +169,6 @@ export async function POST(request: NextRequest) {
       importSessionId: importSessionId
     });
   } catch (e: any) {
-    // Mettre à jour la session d'import en cas d'erreur
     if (importSessionId) {
       try {
         await prisma.importSession.update({
@@ -207,7 +186,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: e?.message ?? 'Erreur serveur' }, { status: 500 });
   }
 }
-
-
-
-

@@ -48,6 +48,7 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_CHUNK_SIZE = 500 * 1024; // 500 Ko
+  const MIN_LINES_PER_CHUNK = 500;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -73,13 +74,11 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         let currentChunk = header + '\n';
         let currentSize = currentChunk.length;
         let lineCount = 0;
-        const MIN_LINES_PER_CHUNK = 500;
         
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i] + '\n';
           lineCount++;
           
-          // Vérifier si on doit créer un nouveau chunk
           const shouldCreateNewChunk = currentSize + line.length > MAX_CHUNK_SIZE && 
                                       lineCount >= MIN_LINES_PER_CHUNK && 
                                       currentChunk !== header + '\n';
@@ -95,7 +94,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
           }
         }
         
-        // Ajouter le dernier chunk s'il n'est pas vide
         if (currentChunk !== header + '\n') {
           chunks.push(currentChunk.trim());
         }
@@ -124,7 +122,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
     let inserted = 0;
     let skipped = 0;
     
-    // Préparer toutes les lignes valides du chunk
     const validRows: any[] = [];
     
     for (let i = 1; i < lines.length; i++) {
@@ -138,7 +135,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         row[col] = values[index] || '';
       });
       
-      // 🚫 Étape 4: Ignorer les lignes sans TransactionID (avec support des espaces)
       const hasTransactionId = row['Transaction ID'] || row['TransactionID'] || row['transactionId'] || 
                                row['ID'] || row['id'] || row['Id'] || row['reference'] || row['Reference'];
       if (!hasTransactionId) {
@@ -149,7 +145,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
       validRows.push(row);
     }
     
-    // Insérer toutes les lignes valides en une seule requête
     if (validRows.length > 0) {
       try {
         const response = await fetch('/api/import-csv-raw', {
@@ -201,7 +196,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
     setResult(null);
     
     try {
-      // 🧱 Étape 1: Découper le fichier
       const chunks = await chunkFile(file);
       
       setProgress(prev => ({
@@ -210,7 +204,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         currentStep: '🧮 Comptage des lignes...'
       }));
       
-      // 🧮 Étape 2: Compter le nombre total de lignes
       const totalLines = countLines(chunks);
       
       setProgress(prev => ({
@@ -222,7 +215,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
       let totalInserted = 0;
       let totalSkipped = 0;
       
-      // 🗃️ Étape 3: Insérer chaque chunk
       for (let i = 0; i < chunks.length; i++) {
         setProgress(prev => ({
           ...prev,
@@ -235,7 +227,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
           totalInserted += chunkResult.inserted;
           totalSkipped += chunkResult.skipped;
           
-          // Mettre à jour la progression en temps réel
           setProgress(prev => ({
             ...prev,
             insertedLines: totalInserted,
@@ -243,7 +234,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
             currentLines: totalInserted + totalSkipped
           }));
           
-          // Délai entre les chunks pour éviter la surcharge
           if (i < chunks.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 50));
           }
@@ -258,7 +248,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
       const endTime = Date.now();
       const processingTime = Math.round((endTime - startTime) / 1000);
       
-      // ✅ Étape 6: Fermer proprement
       setProgress(prev => ({
         ...prev,
         currentStep: '✅ Import terminé avec succès !',
@@ -297,7 +286,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
 
   return (
     <div className="space-y-6">
-      {/* Sélection de fichier */}
       <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
         <input
           ref={fileInputRef}
@@ -362,7 +350,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         )}
       </div>
 
-      {/* Barres de progression */}
       {progress.isProcessing && (
         <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
           <div className="flex items-center gap-2">
@@ -370,7 +357,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
             <span className="font-medium text-blue-900">{progress.currentStep}</span>
           </div>
           
-          {/* 📊 Étape 5: Double barre de progression */}
           <div className="space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-blue-800">📁 Fichiers traités</span>
@@ -385,7 +371,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
             <Progress value={linesProgress} className="h-3 bg-green-100" />
           </div>
           
-          {/* Statistiques en temps réel */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-green-600" />
@@ -399,7 +384,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         </div>
       )}
 
-      {/* Messages d'erreur */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-600 rounded-lg flex items-center gap-2">
           <AlertCircle className="w-5 h-5" />
@@ -410,7 +394,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         </div>
       )}
 
-      {/* Résultats */}
       {result && (
         <div className="p-4 bg-green-50 border border-green-200 text-green-600 rounded-lg">
           <div className="flex items-center gap-2 mb-3">
@@ -432,7 +415,6 @@ export default function SmartChunkedUpload({ onImportSuccess }: SmartChunkedUplo
         </div>
       )}
 
-      {/* Informations sur l'algorithme */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <h4 className="font-semibold text-gray-900 mb-2">🧠 Algorithme d'import intelligent</h4>
         <div className="space-y-1 text-sm text-gray-600">

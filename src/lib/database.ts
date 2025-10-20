@@ -1,14 +1,47 @@
-/**
- * Utilitaires pour la base de données PostgreSQL
- * Gestion des insertions avec gestion des doublons
- */
-
 import { prisma } from './prisma';
 
-/**
- * Insère un batch de transactions en gérant les doublons pour PostgreSQL
- * Alternative à skipDuplicates qui n'est pas supporté par PostgreSQL
- */
+export async function insertTransactionsWithUpsert(
+  transactions: any[],
+  importSessionId?: string
+): Promise<{ inserted: number; ignored: number }> {
+  let inserted = 0;
+  let ignored = 0;
+
+  const chunkSize = 100;
+  
+  for (let i = 0; i < transactions.length; i += chunkSize) {
+    const chunk = transactions.slice(i, i + chunkSize);
+    
+    for (const transaction of chunk) {
+      try {
+        const data = {
+          ...transaction,
+          ...(importSessionId && { importSessionId })
+        };
+
+        await prisma.transaction.upsert({
+          where: {
+            transactionId: transaction.transactionId
+          },
+          update: {
+            originalAmount: transaction.originalAmount,
+            fee: transaction.fee,
+            commissionAll: transaction.commissionAll,
+            updatedAt: new Date()
+          },
+          create: data
+        });
+        inserted++;
+      } catch (error: any) {
+        console.warn(`Erreur lors de l'insertion de la transaction ${transaction.transactionId}:`, error.message);
+        ignored++;
+      }
+    }
+  }
+
+  return { inserted, ignored };
+}
+
 export async function insertTransactionsWithDuplicateHandling(
   transactions: any[],
   importSessionId?: string
@@ -28,11 +61,9 @@ export async function insertTransactionsWithDuplicateHandling(
       });
       inserted++;
     } catch (error: any) {
-      // Si c'est une erreur de contrainte unique (doublon), on ignore
       if (error.code === 'P2002') {
         ignored++;
       } else {
-        // Pour les autres erreurs, on les relance
         throw error;
       }
     }
@@ -41,58 +72,6 @@ export async function insertTransactionsWithDuplicateHandling(
   return { inserted, ignored };
 }
 
-/**
- * Insère un batch de transactions avec upsert (PostgreSQL compatible)
- * Plus efficace pour de gros volumes
- */
-export async function insertTransactionsWithUpsert(
-  transactions: any[],
-  importSessionId?: string
-): Promise<{ inserted: number; ignored: number }> {
-  let inserted = 0;
-  let ignored = 0;
-
-  // Grouper les transactions par chunks pour éviter les timeouts
-  const chunkSize = 100;
-  
-  for (let i = 0; i < transactions.length; i += chunkSize) {
-    const chunk = transactions.slice(i, i + chunkSize);
-    
-    for (const transaction of chunk) {
-      try {
-        const data = {
-          ...transaction,
-          ...(importSessionId && { importSessionId })
-        };
-
-        // Utiliser upsert pour gérer les doublons
-        await prisma.transaction.upsert({
-          where: {
-            transactionId: transaction.transactionId
-          },
-          update: {
-            // Mettre à jour les champs si la transaction existe déjà
-            originalAmount: transaction.originalAmount,
-            fee: transaction.fee,
-            commissionAll: transaction.commissionAll,
-            updatedAt: new Date()
-          },
-          create: data
-        });
-        inserted++;
-      } catch (error: any) {
-        console.warn(`Erreur lors de l'insertion de la transaction ${transaction.transactionId}:`, error.message);
-        ignored++;
-      }
-    }
-  }
-
-  return { inserted, ignored };
-}
-
-/**
- * Vérifie si la base de données est bien connectée à PostgreSQL
- */
 export async function checkDatabaseConnection(): Promise<boolean> {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -103,9 +82,6 @@ export async function checkDatabaseConnection(): Promise<boolean> {
   }
 }
 
-/**
- * Obtient des informations sur la base de données
- */
 export async function getDatabaseInfo() {
   try {
     const result = await prisma.$queryRaw`
