@@ -26,8 +26,9 @@ export async function GET(request: Request) {
       where: {
         ...dateFilter,
         transactionType: {
-          not: null,
-          not: ''
+          not: {
+            in: [null, '']
+          }
         }
       },
       _count: {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import Papa from 'papaparse';
+import { normalizePhoneNumber } from '@/lib/phoneNumberUtils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -71,8 +72,8 @@ export async function POST(request: NextRequest) {
         return {
           transactionId: (tx['Transaction ID'] || `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`).toString().trim(),
           transactionInitiatedTime: transactionDate,
-          frmsisdn: (tx['FRMSISDN'] || '').toString().trim(),
-          tomsisdn: (tx['TOMSISDN'] || '').toString().trim(),
+          frmsisdn: normalizePhoneNumber(tx['FRMSISDN'] || ''),
+          tomsisdn: normalizePhoneNumber(tx['TOMSISDN'] || ''),
           frProfile: (tx['FRPROFILE'] || '').toString().trim(),
           toProfile: (tx['TOPROFILE'] || '').toString().trim(),
           transactionType: (tx['Transaction Type'] || '').toString().trim(),
@@ -84,6 +85,10 @@ export async function POST(request: NextRequest) {
           commissionRevendeur: parseFloat(tx['COMMISSION_REVENDEUR'] || '0') || null,
           commissionMarchand: parseFloat(tx['COMMISSION_MARCHAND'] || '0') || null,
           merchantsOnlineCashIn: (tx['MSISDN_MARCHAND'] || '').toString().trim(),
+          origBalanceBefore: parseFloat(tx['ORIGBALANCEBEFORE'] || '0') || null,
+          origBalanceAfter: parseFloat(tx['ORIGBALANCEAFTER'] || '0') || null,
+          destBalanceBefore: parseFloat(tx['DESTBALANCEBEFORE'] || '0') || null,
+          destBalanceAfter: parseFloat(tx['DESTBALANCEAFTER'] || '0') || null,
         };
       })
       .filter(tx => {

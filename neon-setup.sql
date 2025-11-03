@@ -1,5 +1,5 @@
 -- =====================================================
--- 🚀 SCRIPT DE CONFIGURATION NEON POUR MOOV MONEY REPORT
+-- 🚀 SCRIPT DE CONFIGURATION NEON POUR T-REPORT
 -- =====================================================
 -- Ce script crée toutes les tables nécessaires et insère l'utilisateur admin par défaut
 -- Exécutez ce script dans votre dashboard Neon (SQL Editor)
@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS "transactions" (
     "commissionMarchand" DOUBLE PRECISION,
     "commissionRevendeur" DOUBLE PRECISION,
     "commissionSousDistributeur" DOUBLE PRECISION,
+    "origBalanceBefore" DOUBLE PRECISION,
+    "origBalanceAfter" DOUBLE PRECISION,
+    "destBalanceBefore" DOUBLE PRECISION,
+    "destBalanceAfter" DOUBLE PRECISION,
     
     -- Clé étrangère vers import_sessions
     CONSTRAINT "transactions_importSessionId_fkey" 

@@ -1,6 +1,6 @@
 const { spawn } = require('child_process');
 
-console.log('🚀 Démarrage de l\'application Moov Money Report...');
+console.log('🚀 Démarrage de l\'application T-Report...');
 console.log('');
 console.log('📋 Informations de connexion:');
 console.log('   URL: http://localhost:3000');

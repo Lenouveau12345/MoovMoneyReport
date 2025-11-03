@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Readable } from 'stream';
 import { parse } from 'csv-parse';
+import { normalizePhoneNumber } from '@/lib/phoneNumberUtils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -182,8 +183,8 @@ function transformTransaction(record: any, importSessionId: string) {
   return {
     transactionId: record.transactionId?.trim(),
     transactionInitiatedTime: new Date(record.transactionInitiatedTime),
-    frmsisdn: record.frmsisdn?.trim(),
-    tomsisdn: record.tomsisdn?.trim(),
+    frmsisdn: normalizePhoneNumber(record.frmsisdn),
+    tomsisdn: normalizePhoneNumber(record.tomsisdn),
     frProfile: record.frProfile?.trim() || '',
     toProfile: record.toProfile?.trim() || '',
     transactionType: record.transactionType?.trim() || '',
@@ -196,6 +197,10 @@ function transformTransaction(record: any, importSessionId: string) {
     commissionMarchand: parseFloat(record.commissionMarchand) || 0,
     commissionRevendeur: parseFloat(record.commissionRevendeur) || 0,
     commissionSousDistributeur: parseFloat(record.commissionSousDistributeur) || 0,
+    origBalanceBefore: parseFloat(record.ORIGBALANCEBEFORE) || null,
+    origBalanceAfter: parseFloat(record.ORIGBALANCEAFTER) || null,
+    destBalanceBefore: parseFloat(record.DESTBALANCEBEFORE) || null,
+    destBalanceAfter: parseFloat(record.DESTBALANCEAFTER) || null,
   };
 }
 

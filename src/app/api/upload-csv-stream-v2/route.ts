@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
+import { normalizePhoneNumber } from '@/lib/phoneNumberUtils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -91,8 +92,8 @@ export async function POST(request: NextRequest) {
       const transaction = {
         transactionId: record['Transaction ID'] || record['transactionId'] || record['ID'] || record['id'],
         transactionInitiatedTime: new Date(record['Transaction Initiated Time'] || record['transactionInitiatedTime'] || record['date'] || record['Date']),
-        frmsisdn: record['FRMSISDN'] || record['frmsisdn'] || record['from_msisdn'] || record['fromMsisdn'] || '',
-        tomsisdn: record['TOMSISDN'] || record['tomsisdn'] || record['to_msisdn'] || record['toMsisdn'] || '',
+        frmsisdn: normalizePhoneNumber(record['FRMSISDN'] || record['frmsisdn'] || record['from_msisdn'] || record['fromMsisdn'] || ''),
+        tomsisdn: normalizePhoneNumber(record['TOMSISDN'] || record['tomsisdn'] || record['to_msisdn'] || record['toMsisdn'] || ''),
         frProfile: record['FRPROFILE'] || record['fr_profile'] || record['from_profile'] || record['fromProfile'] || '',
         toProfile: record['TOPROFILE'] || record['to_profile'] || record['receiver_profile'] || record['toProfile'] || '',
         transactionType: record['Transaction Type'] || record['transaction_type'] || record['Transaction_Type'] || record['type'] || record['Type'] || '',
@@ -104,6 +105,10 @@ export async function POST(request: NextRequest) {
         commissionMarchand: parseFloat(record['COMMISSION_MARCHAND'] || record['commission_marchand'] || record['marchand_commission'] || '0') || null,
         commissionRevendeur: parseFloat(record['COMMISSION_REVENDEUR'] || record['commission_revendeur'] || record['revendeur_commission'] || '0') || null,
         commissionSousDistributeur: parseFloat(record['COMMISSION_SOUS_DISTRIBUTEUR'] || record['commission_sous_distributeur'] || record['sous_distributeur_commission'] || '0') || null,
+        origBalanceBefore: parseFloat(record['ORIGBALANCEBEFORE']) || null,
+        origBalanceAfter: parseFloat(record['ORIGBALANCEAFTER']) || null,
+        destBalanceBefore: parseFloat(record['DESTBALANCEBEFORE']) || null,
+        destBalanceAfter: parseFloat(record['DESTBALANCEAFTER']) || null,
       };
 
       // Validation basique

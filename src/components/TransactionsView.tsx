@@ -40,6 +40,10 @@ interface Transaction {
   commissionRevendeur: number | null;
   commissionMarchand: number | null;
   merchantsOnlineCashIn: string;
+  origBalanceBefore?: number | null;
+  origBalanceAfter?: number | null;
+  destBalanceBefore?: number | null;
+  destBalanceAfter?: number | null;
   createdAt: string;
 }
 
@@ -569,6 +573,10 @@ export default function TransactionsView() {
                       <th className="text-right p-2">Comm. Sous-Dist.</th>
                       <th className="text-right p-2">Comm. Revendeur</th>
                       <th className="text-right p-2">Comm. Marchand</th>
+                      <th className="text-right p-2">Solde Orig. Avant</th>
+                      <th className="text-right p-2">Solde Orig. Après</th>
+                      <th className="text-right p-2">Solde Dest. Avant</th>
+                      <th className="text-right p-2">Solde Dest. Après</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -598,8 +606,16 @@ export default function TransactionsView() {
                             {transaction.transactionType}
                           </span>
                         </td>
-                        <td className="p-2 font-mono group-hover:text-orange-700">{transaction.frmsisdn}</td>
-                        <td className="p-2 font-mono group-hover:text-orange-700">{transaction.tomsisdn}</td>
+                        <td className="p-2 font-mono group-hover:text-orange-700">
+                          {transaction.frmsisdn.includes('E+') || transaction.frmsisdn.includes('e+')
+                            ? Math.floor(parseFloat(transaction.frmsisdn)).toString()
+                            : transaction.frmsisdn}
+                        </td>
+                        <td className="p-2 font-mono group-hover:text-orange-700">
+                          {transaction.tomsisdn.includes('E+') || transaction.tomsisdn.includes('e+')
+                            ? Math.floor(parseFloat(transaction.tomsisdn)).toString()
+                            : transaction.tomsisdn}
+                        </td>
                         <td className="p-2">
                           <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs group-hover:bg-orange-200 transition-colors">
                             {transaction.frProfile}
@@ -630,6 +646,18 @@ export default function TransactionsView() {
                         </td>
                         <td className="p-2 text-right text-gray-600 group-hover:text-orange-600">
                           {transaction.commissionMarchand ? formatAmount(transaction.commissionMarchand) : '-'}
+                        </td>
+                        <td className="p-2 text-right text-blue-600 group-hover:text-blue-700">
+                          {transaction.origBalanceBefore !== null && transaction.origBalanceBefore !== undefined ? formatAmount(transaction.origBalanceBefore) : '-'}
+                        </td>
+                        <td className="p-2 text-right text-blue-600 group-hover:text-blue-700">
+                          {transaction.origBalanceAfter !== null && transaction.origBalanceAfter !== undefined ? formatAmount(transaction.origBalanceAfter) : '-'}
+                        </td>
+                        <td className="p-2 text-right text-green-600 group-hover:text-green-700">
+                          {transaction.destBalanceBefore !== null && transaction.destBalanceBefore !== undefined ? formatAmount(transaction.destBalanceBefore) : '-'}
+                        </td>
+                        <td className="p-2 text-right text-green-600 group-hover:text-green-700">
+                          {transaction.destBalanceAfter !== null && transaction.destBalanceAfter !== undefined ? formatAmount(transaction.destBalanceAfter) : '-'}
                         </td>
                       </tr>
                     ))}

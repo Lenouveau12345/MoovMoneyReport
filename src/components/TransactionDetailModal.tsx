@@ -38,6 +38,10 @@ interface Transaction {
   commissionRevendeur: number | null;
   commissionMarchand: number | null;
   merchantsOnlineCashIn: string;
+  origBalanceBefore?: number | null;
+  origBalanceAfter?: number | null;
+  destBalanceBefore?: number | null;
+  destBalanceAfter?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -212,8 +216,8 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose, p
                     <span className="text-gray-700 font-medium">Expéditeur:</span>
                   </div>
                   <p className="font-mono text-sm text-black ml-6 font-semibold">
-                    {transaction.frmsisdn.includes('E+') 
-                      ? parseInt(transaction.frmsisdn).toLocaleString('fr-FR')
+                    {transaction.frmsisdn.includes('E+') || transaction.frmsisdn.includes('e+')
+                      ? Math.floor(parseFloat(transaction.frmsisdn)).toString()
                       : transaction.frmsisdn
                     }
                   </p>
@@ -232,8 +236,8 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose, p
                     <span className="text-gray-700 font-medium">Destinataire:</span>
                   </div>
                   <p className="font-mono text-sm text-black ml-6 font-semibold">
-                    {transaction.tomsisdn.includes('E+') 
-                      ? parseInt(transaction.tomsisdn).toLocaleString('fr-FR')
+                    {transaction.tomsisdn.includes('E+') || transaction.tomsisdn.includes('e+')
+                      ? Math.floor(parseFloat(transaction.tomsisdn)).toString()
                       : transaction.tomsisdn
                     }
                   </p>
@@ -283,6 +287,60 @@ export default function TransactionDetailModal({ transaction, isOpen, onClose, p
               </div>
             </div>
           </div>
+
+          {/* Section Soldes */}
+          {(transaction.origBalanceBefore !== null || transaction.origBalanceAfter !== null || 
+            transaction.destBalanceBefore !== null || transaction.destBalanceAfter !== null) && (
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              {/* Soldes expéditeur */}
+              {(transaction.origBalanceBefore !== null || transaction.origBalanceAfter !== null) && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="w-5 h-5 text-blue-600" />
+                    <span className="text-base font-bold text-black">Solde Expéditeur</span>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-700 font-medium">Avant:</span>
+                      <span className="font-semibold text-black">
+                        {transaction.origBalanceBefore !== null ? formatAmount(transaction.origBalanceBefore) : '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-700 font-medium">Après:</span>
+                      <span className="font-semibold text-black">
+                        {transaction.origBalanceAfter !== null ? formatAmount(transaction.origBalanceAfter) : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Soldes destinataire */}
+              {(transaction.destBalanceBefore !== null || transaction.destBalanceAfter !== null) && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <User className="w-5 h-5 text-green-600" />
+                    <span className="text-base font-bold text-black">Solde Destinataire</span>
+                  </div>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-700 font-medium">Avant:</span>
+                      <span className="font-semibold text-black">
+                        {transaction.destBalanceBefore !== null ? formatAmount(transaction.destBalanceBefore) : '-'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-700 font-medium">Après:</span>
+                      <span className="font-semibold text-black">
+                        {transaction.destBalanceAfter !== null ? formatAmount(transaction.destBalanceAfter) : '-'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

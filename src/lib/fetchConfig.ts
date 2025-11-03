@@ -17,7 +17,7 @@ export class SecureFetch {
     retries: 3,
     headers: {
       'Accept': 'application/json',
-      'User-Agent': 'MoovMoneyReport/1.0',
+      'User-Agent': 'T-Report/1.0',
     }
   };
 

@@ -1,4 +1,4 @@
-# 🔐 Guide de Connexion - Moov Money Report
+# 🔐 Guide de Connexion - T-Report
 
 ## ✅ Problèmes Résolus
 
@@ -105,7 +105,7 @@ Si vous rencontrez des problèmes :
 
 ## 🎉 Félicitations !
 
-Votre application Moov Money Report est maintenant :
+Votre application T-Report est maintenant :
 - ✅ Connectée à Neon
 - ✅ Sécurisée avec authentification
 - ✅ Optimisée pour les gros volumes de données

@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -41,9 +41,13 @@ model Transaction {
   commissionMarchand         Float?
   commissionRevendeur        Float?
   commissionSousDistributeur Float?
+  origBalanceBefore          Float?
+  origBalanceAfter           Float?
+  destBalanceBefore          Float?
+  destBalanceAfter           Float?
   importSession              ImportSession? @relation(fields: [importSessionId], references: [id])
 
-  @@unique([transactionId])
+  @@unique([transactionId, importSessionId])
   @@index([frmsisdn])
   @@index([importSessionId])
   @@index([tomsisdn])

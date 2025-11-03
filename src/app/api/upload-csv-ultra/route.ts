@@ -31,8 +31,8 @@ function transformTransaction(row: any, sessionId: string) {
   return {
     transactionId: row['Transaction ID'] || row['transactionId'] || row['ID'] || row['id'] || '',
     transactionInitiatedTime: toDate(row['Transaction Initiated Time'] || row['transactionInitiatedTime'] || row['date'] || row['Date']),
-    frmsisdn: row['FRMSISDN'] || row['frmsisdn'] || row['from'] || row['From'] || '',
-    tomsisdn: row['TOMSISDN'] || row['tomsisdn'] || row['to'] || row['To'] || '',
+    frmsisdn: normalizePhoneNumber(row['FRMSISDN'] || row['frmsisdn'] || row['from'] || row['From'] || ''),
+    tomsisdn: normalizePhoneNumber(row['TOMSISDN'] || row['tomsisdn'] || row['to'] || row['To'] || ''),
     frName: row['FR_NAME'] || row['frName'] || row['fromName'] || null,
     toName: row['TO_NAME'] || row['toName'] || row['toName'] || null,
     frProfile: row['FR_PROFILE'] || row['frProfile'] || row['fromProfile'] || '',
@@ -42,6 +42,10 @@ function transformTransaction(row: any, sessionId: string) {
     fee: toNumber(row['Fee'] || row['fee'] || row['Fees']),
     commissionAll: toNumber(row['Commission ALL'] || row['commissionAll'] || row['commission'] || row['Commission']),
     merchantsOnlineCashIn: row['MSISDN_MARCHAND'] || row['merchantsOnlineCashIn'] || row['merchant'] || '',
+    origBalanceBefore: toNumber(row['ORIGBALANCEBEFORE']) || null,
+    origBalanceAfter: toNumber(row['ORIGBALANCEAFTER']) || null,
+    destBalanceBefore: toNumber(row['DESTBALANCEBEFORE']) || null,
+    destBalanceAfter: toNumber(row['DESTBALANCEAFTER']) || null,
     importSessionId: sessionId,
   };
 }

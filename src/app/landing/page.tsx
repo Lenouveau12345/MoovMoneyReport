@@ -30,7 +30,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center border-2 border-white/30">
               <TrendingUp className="w-6 h-6 text-white" />
             </div>
-            <span className="text-2xl font-bold text-white">MOOV MONEY REPORT</span>
+            <span className="text-2xl font-bold text-white">T-REPORT</span>
           </div>
           <button
             onClick={() => router.push('/auth/signin')}
@@ -49,7 +49,7 @@ export default function LandingPage() {
             Tableau de Bord des Transactions
           </h1>
           <p className="text-xl text-orange-100 mb-8">
-            Analysez et gérez vos transactions financières MOOV Money avec des rapports détaillés et des statistiques en temps réel.
+            Analysez et gérez vos transactions financières avec des rapports détaillés et des statistiques en temps réel.
           </p>
           <button
             onClick={() => router.push('/auth/signin')}
@@ -100,7 +100,7 @@ export default function LandingPage() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <p className="text-orange-100">
-            © 2024 MOOV MONEY REPORT - Tous droits réservés
+            © 2024 T-REPORT - Tous droits réservés
           </p>
         </div>
       </div>

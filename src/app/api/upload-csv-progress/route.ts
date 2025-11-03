@@ -4,6 +4,7 @@ export const revalidate = 0;
 export const maxDuration = 300; // 5 minutes max pour Vercel Pro
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { normalizePhoneNumber } from '@/lib/phoneNumberUtils';
 
 // Mémoire de progression en process (simple pour dev/local)
 type ProgressStatus = {
@@ -66,8 +67,8 @@ function parseTransactionRow(headers: string[], values: string[]) {
         return {
     transactionId: (row['Transaction ID'] || `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`).toString().trim(),
           transactionInitiatedTime: transactionDate,
-    frmsisdn: (row['FRMSISDN'] || '').toString().trim(),
-    tomsisdn: (row['TOMSISDN'] || '').toString().trim(),
+    frmsisdn: normalizePhoneNumber(row['FRMSISDN'] || ''),
+    tomsisdn: normalizePhoneNumber(row['TOMSISDN'] || ''),
     frProfile: (row['FRPROFILE'] || '').toString().trim(),
     toProfile: (row['TOPROFILE'] || '').toString().trim(),
     transactionType: (row['Transaction Type'] || '').toString().trim(),
@@ -79,6 +80,10 @@ function parseTransactionRow(headers: string[], values: string[]) {
     commissionRevendeur: parseFloat(row['COMMISSION_REVENDEUR'] || '0') || null,
     commissionMarchand: parseFloat(row['COMMISSION_MARCHAND'] || '0') || null,
     merchantsOnlineCashIn: (row['MSISDN_MARCHAND'] || '').toString().trim(),
+    origBalanceBefore: parseFloat(row['ORIGBALANCEBEFORE'] || '0') || null,
+    origBalanceAfter: parseFloat(row['ORIGBALANCEAFTER'] || '0') || null,
+    destBalanceBefore: parseFloat(row['DESTBALANCEBEFORE'] || '0') || null,
+    destBalanceAfter: parseFloat(row['DESTBALANCEAFTER'] || '0') || null,
   };
 }
 

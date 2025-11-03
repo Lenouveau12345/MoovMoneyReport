@@ -76,9 +76,9 @@ export default function SidebarLayout({ children }: SidebarLayoutProps) {
             </button>
             <div className="flex items-center space-x-2">
               <div className="w-6 h-6 bg-gradient-to-r from-orange-500 to-orange-600 rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">M</span>
+                <span className="text-white text-xs font-bold">T</span>
               </div>
-              <span className="font-semibold text-gray-900">Moov Money</span>
+              <span className="font-semibold text-gray-900">T-Report</span>
             </div>
           </div>
         </div>

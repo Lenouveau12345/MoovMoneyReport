@@ -26,8 +26,9 @@ export async function GET(request: NextRequest) {
       where: {
         ...dateFilter,
         frProfile: {
-          not: null,
-          not: ''
+          not: {
+            in: [null, '']
+          }
         }
       },
       _count: {
@@ -51,8 +52,9 @@ export async function GET(request: NextRequest) {
       where: {
         ...dateFilter,
         toProfile: {
-          not: null,
-          not: ''
+          not: {
+            in: [null, '']
+          }
         }
       },
       _count: {

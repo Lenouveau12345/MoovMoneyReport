@@ -52,7 +52,7 @@ export default function SignIn() {
           <div className="w-20 h-20 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-4 border-2 border-white/30">
             <TrendingUp className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Moov Money Report</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">T-Report</h1>
           <p className="text-orange-100">Tableau de bord des transactions</p>
         </div>
 

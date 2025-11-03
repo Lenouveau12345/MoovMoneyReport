@@ -4,8 +4,8 @@ import SidebarLayout from "@/components/SidebarLayout";
 import AuthProvider from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
-  title: "MOOV MONEY REPORT",
-  description: "Application de rapport et d'analyse des transactions financières MOOV Money",
+  title: "T-REPORT",
+  description: "Application de rapport et d'analyse des transactions financières",
 };
 
 export default function RootLayout({

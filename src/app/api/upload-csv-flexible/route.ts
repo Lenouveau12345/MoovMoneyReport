@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import Papa from 'papaparse';
+import { normalizePhoneNumber } from '@/lib/phoneNumberUtils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -130,12 +131,12 @@ export async function POST(request: NextRequest) {
         return {
           transactionId: transactionId || `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           transactionInitiatedTime: transactionDate,
-          frmsisdn: mapColumn(tx, [
+          frmsisdn: normalizePhoneNumber(mapColumn(tx, [
             'FRMSISDN', 'frmsisdn', 'from_msisdn', 'fromMsisdn', 'sender', 'Sender'
-          ]).toString().trim(),
-          tomsisdn: mapColumn(tx, [
+          ])),
+          tomsisdn: normalizePhoneNumber(mapColumn(tx, [
             'TOMSISDN', 'tomsisdn', 'to_msisdn', 'toMsisdn', 'receiver', 'Receiver'
-          ]).toString().trim(),
+          ])),
           frName: mapColumn(tx, [
             'FRNAME', 'fr_name', 'from_name', 'fromName', 'sender_name', 'Sender Name'
           ]).toString().trim() || null,
@@ -173,6 +174,10 @@ export async function POST(request: NextRequest) {
           merchantsOnlineCashIn: mapColumn(tx, [
             'MSISDN_MARCHAND', 'msisdn_marchand', 'merchant_msisdn', 'merchantMsisdn'
           ]).toString().trim(),
+          origBalanceBefore: parseFloat(mapColumn(tx, ['ORIGBALANCEBEFORE'], '0')) || null,
+          origBalanceAfter: parseFloat(mapColumn(tx, ['ORIGBALANCEAFTER'], '0')) || null,
+          destBalanceBefore: parseFloat(mapColumn(tx, ['DESTBALANCEBEFORE'], '0')) || null,
+          destBalanceAfter: parseFloat(mapColumn(tx, ['DESTBALANCEAFTER'], '0')) || null,
         };
       })
       .filter(tx => {

@@ -113,6 +113,47 @@ export async function GET(request: NextRequest) {
     let transactions, totalCount;
     
     try {
+      // Vérifier si les colonnes de balance existent
+      let balanceColumnsAvailable = false;
+      try {
+        await prisma.$queryRawUnsafe(`
+          SELECT "origBalanceBefore" FROM "transactions" LIMIT 1
+        `);
+        balanceColumnsAvailable = true;
+      } catch (e) {
+        // Colonnes n'existent pas encore
+        balanceColumnsAvailable = false;
+      }
+
+      const baseSelect: any = {
+        id: true,
+        transactionId: true,
+        transactionInitiatedTime: true,
+        frmsisdn: true,
+        tomsisdn: true,
+        frName: true,
+        toName: true,
+        frProfile: true,
+        toProfile: true,
+        transactionType: true,
+        originalAmount: true,
+        fee: true,
+        commissionAll: true,
+        commissionDistributeur: true,
+        commissionSousDistributeur: true,
+        commissionRevendeur: true,
+        commissionMarchand: true,
+        merchantsOnlineCashIn: true,
+        createdAt: true,
+      };
+
+      if (balanceColumnsAvailable) {
+        baseSelect.origBalanceBefore = true;
+        baseSelect.origBalanceAfter = true;
+        baseSelect.destBalanceBefore = true;
+        baseSelect.destBalanceAfter = true;
+      }
+
       [transactions, totalCount] = await Promise.all([
         prisma.transaction.findMany({
           where,
@@ -121,25 +162,7 @@ export async function GET(request: NextRequest) {
           },
           skip: offset,
           take: limit,
-          select: {
-            id: true,
-            transactionId: true,
-            transactionInitiatedTime: true,
-            frmsisdn: true,
-            tomsisdn: true,
-            frProfile: true,
-            toProfile: true,
-            transactionType: true,
-            originalAmount: true,
-            fee: true,
-            commissionAll: true,
-            commissionDistributeur: true,
-            commissionSousDistributeur: true,
-            commissionRevendeur: true,
-            commissionMarchand: true,
-            merchantsOnlineCashIn: true,
-            createdAt: true,
-          }
+          select: baseSelect
         }),
         prisma.transaction.count({ where })
       ]);
@@ -180,6 +203,10 @@ export async function GET(request: NextRequest) {
         commissionSousDistributeur: t.commissionSousDistributeur ? Number(t.commissionSousDistributeur) : null,
         commissionRevendeur: t.commissionRevendeur ? Number(t.commissionRevendeur) : null,
         commissionMarchand: t.commissionMarchand ? Number(t.commissionMarchand) : null,
+        origBalanceBefore: (t as any).origBalanceBefore ? Number((t as any).origBalanceBefore) : null,
+        origBalanceAfter: (t as any).origBalanceAfter ? Number((t as any).origBalanceAfter) : null,
+        destBalanceBefore: (t as any).destBalanceBefore ? Number((t as any).destBalanceBefore) : null,
+        destBalanceAfter: (t as any).destBalanceAfter ? Number((t as any).destBalanceAfter) : null,
       })),
       pagination: {
         page,

@@ -17,7 +17,8 @@ import {
   Users,
   DollarSign,
   LogOut,
-  User
+  User,
+  Wallet
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -67,6 +68,12 @@ const navigationItems = [
     href: '/transactions',
     icon: Database,
     description: 'Consulter les transactions'
+  },
+  {
+    name: 'Consultation Soldes',
+    href: '/consultation-soldes',
+    icon: Wallet,
+    description: 'Soldes par expéditeur et destinataire'
   }
 ];
 
@@ -205,7 +212,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">MOOV MONEY REPORT</h1>
+              <h1 className="text-xl font-bold text-gray-900">T-REPORT</h1>
               <p className="text-xs text-gray-500">Tableau de bord</p>
             </div>
           </div>

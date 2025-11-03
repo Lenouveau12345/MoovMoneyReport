@@ -1,6 +1,6 @@
 # 🚀 Guide de Déploiement sur Vercel
 
-Ce guide vous explique comment déployer l'application Moov Money Report sur Vercel.
+Ce guide vous explique comment déployer l'application T-Report sur Vercel.
 
 ## 📋 Prérequis
 
@@ -187,4 +187,4 @@ vercel --prod
 
 ---
 
-🎉 **Félicitations !** Votre application Moov Money Report est maintenant déployée sur Vercel !
+🎉 **Félicitations !** Votre application T-Report est maintenant déployée sur Vercel !
