@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date'); // Format: YYYY-MM-DD
     const fromDate = searchParams.get('fromDate');
     const toDate = searchParams.get('toDate');
+    const clientNumber = searchParams.get('clientNumber'); // Numéro du client à rechercher
 
     // Construire les filtres de date
     const dateFilter: any = {};
@@ -32,14 +33,29 @@ export async function GET(request: NextRequest) {
       dateFilter.lte = endOfDay;
     }
 
+    // Construire le filtre pour le numéro de client si fourni
+    const clientFilter: any = {};
+    if (clientNumber) {
+      const normalizedClientNumber = clientNumber.trim().replace(/\s+/g, '');
+      // Rechercher dans frmsisdn ou tomsisdn
+      clientFilter.OR = [
+        { frmsisdn: { contains: normalizedClientNumber } },
+        { tomsisdn: { contains: normalizedClientNumber } }
+      ];
+    }
+
+    // Combiner les filtres de date et de client
+    const whereClause: any = {
+      transactionInitiatedTime: dateFilter,
+      ...clientFilter
+    };
+
     // Récupérer toutes les transactions pour la date
     // Utiliser un select qui fonctionne même si les colonnes de balance n'existent pas encore
     let transactions;
     try {
       transactions = await prisma.transaction.findMany({
-        where: {
-          transactionInitiatedTime: dateFilter
-        },
+        where: whereClause,
         select: {
           frmsisdn: true,
           tomsisdn: true,
@@ -75,9 +91,7 @@ export async function GET(request: NextRequest) {
       if (balanceColumnsAvailable && transactions.length > 0) {
         // Les colonnes existent, refaire la requête avec toutes les colonnes
         transactions = await prisma.transaction.findMany({
-          where: {
-            transactionInitiatedTime: dateFilter
-          },
+          where: whereClause,
           select: {
             frmsisdn: true,
             tomsisdn: true,
@@ -106,9 +120,7 @@ export async function GET(request: NextRequest) {
       if (dbError?.message?.includes('origBalanceBefore') || dbError?.message?.includes('destBalanceBefore')) {
         console.warn('Colonnes de balance non trouvées, utilisation des données sans balance');
         transactions = await prisma.transaction.findMany({
-          where: {
-            transactionInitiatedTime: dateFilter
-          },
+          where: whereClause,
           select: {
             frmsisdn: true,
             tomsisdn: true,

@@ -168,21 +168,27 @@ export async function GET(request: NextRequest) {
         averageTransactionAmount: totalTransactions > 0 ? Number(totalVolume._sum.originalAmount || 0) / totalTransactions : 0,
       },
       breakdown: {
-        byType: transactionsByType.map(item => ({
-          transactionType: item.transactionType,
-          _count: {
-            transactionId: Number(item._count.transactionId)
-          },
-          _sum: {
-            originalAmount: Number(item._sum.originalAmount || 0),
-            fee: Number(item._sum.fee || 0),
-            commissionAll: Number(item._sum.commissionAll || 0),
-            commissionDistributeur: Number(item._sum.commissionDistributeur || 0),
-            commissionSousDistributeur: Number(item._sum.commissionSousDistributeur || 0),
-            commissionRevendeur: Number(item._sum.commissionRevendeur || 0),
-            commissionMarchand: Number(item._sum.commissionMarchand || 0)
-          }
-        })),
+        byType: transactionsByType.map(item => {
+          const totalVolumeByType = Number(item._sum.originalAmount || 0);
+          const totalVolumeAll = Number(totalVolume._sum.originalAmount || 0);
+          const percentage = totalVolumeAll > 0 ? (totalVolumeByType / totalVolumeAll) * 100 : 0;
+
+          return {
+            transactionType: item.transactionType,
+            _count: {
+              transactionId: Number(item._count.transactionId)
+            },
+            _sum: {
+              originalAmount: totalVolumeByType,
+              fee: Number(item._sum.fee || 0),
+              commissionAll: Number(item._sum.commissionAll || 0),
+              commissionDistributeur: Number(item._sum.commissionDistributeur || 0),
+              commissionSousDistributeur: Number(item._sum.commissionSousDistributeur || 0),
+              commissionRevendeur: Number(item._sum.commissionRevendeur || 0),
+              commissionMarchand: Number(item._sum.commissionMarchand || 0)
+            }
+          };
+        }).sort((a, b) => b._sum.originalAmount - a._sum.originalAmount), // Trier par volume décroissant
       },
       topTransactions: topTransactions.map(t => ({
         ...t,

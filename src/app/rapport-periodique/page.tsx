@@ -10,6 +10,7 @@ import TopTransactionsCard from "@/components/TopTransactionsCard";
 import TransactionEvolutionCard from "@/components/TransactionEvolutionCard";
 import TransactionTypeDistributionCard from "@/components/TransactionTypeDistributionCard";
 import CommissionBreakdownCard from "@/components/CommissionBreakdownCard";
+import ExecutiveReportGenerator from "@/components/ExecutiveReportGenerator";
 import Link from "next/link";
 
 export default function RapportPeriodique() {
@@ -77,21 +78,20 @@ export default function RapportPeriodique() {
           </Card>
         </Button>
 
-        <Button className="h-auto p-0 border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100 hover:shadow-xl transition-all duration-300">
-          <Card className="border border-gray-300 w-full">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
-                  <Download className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-purple-900">Exporter Rapport</h3>
-                  <p className="text-sm text-purple-700">Télécharger les analyses</p>
-                </div>
+        <Card className="border border-gray-300 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                <Download className="w-6 h-6 text-white" />
               </div>
-            </CardContent>
-          </Card>
-        </Button>
+              <div>
+                <h3 className="font-semibold text-purple-900">Rapport Complet PDF</h3>
+                <p className="text-sm text-purple-700">Générer un rapport professionnel pour le conseil d'administration</p>
+              </div>
+            </div>
+            <ExecutiveReportGenerator period={currentPeriod} customDateRange={customDateRange} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main Content */}

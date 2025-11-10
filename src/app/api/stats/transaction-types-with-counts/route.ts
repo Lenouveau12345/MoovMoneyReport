@@ -20,17 +20,18 @@ export async function GET(request: Request) {
       };
     }
     
+    // Construire la condition WHERE
+    const where: any = {
+      ...dateFilter,
+      transactionType: {
+        not: ''
+      }
+    };
+    
     // Récupérer les types de transactions avec leurs comptes
     const transactionTypesWithCounts = await prisma.transaction.groupBy({
       by: ['transactionType'],
-      where: {
-        ...dateFilter,
-        transactionType: {
-          not: {
-            in: [null, '']
-          }
-        }
-      },
+      where: where,
       _count: {
         transactionId: true
       },
@@ -84,9 +85,13 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('Erreur lors de la récupération des types de transactions avec comptes:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Détails de l\'erreur:', { errorMessage, errorStack });
     return NextResponse.json({ 
       error: 'Erreur interne du serveur',
-      details: error instanceof Error ? error.message : 'Erreur inconnue'
+      details: errorMessage,
+      stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
     }, { status: 500 });
   }
 }

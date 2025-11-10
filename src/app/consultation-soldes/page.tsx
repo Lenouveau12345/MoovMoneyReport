@@ -71,6 +71,8 @@ export default function ConsultationSoldes() {
   const [toDate, setToDate] = useState('');
   const [useDateRange, setUseDateRange] = useState(false);
   const [expandedFrom, setExpandedFrom] = useState<Set<string>>(new Set());
+  const [clientNumber, setClientNumber] = useState('');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
@@ -80,6 +82,11 @@ export default function ConsultationSoldes() {
         url += `fromDate=${fromDate}&toDate=${toDate}`;
       } else {
         url += `date=${selectedDate}`;
+      }
+
+      // Ajouter le numéro de client si fourni
+      if (clientNumber && clientNumber.trim()) {
+        url += `&clientNumber=${encodeURIComponent(clientNumber.trim())}`;
       }
 
       const response = await fetch(url);
@@ -99,9 +106,23 @@ export default function ConsultationSoldes() {
     }
   };
 
+  // Recharger les données au montage initial et quand les filtres changent
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+      fetchData();
+      return;
+    }
+
+    // Pour le numéro de client, on attend 500ms (recherche en temps réel)
+    // Pour les dates, on recharge immédiatement
+    const timeoutId = setTimeout(() => {
+      fetchData();
+    }, clientNumber ? 500 : 0); // Délai uniquement pour la recherche de numéro
+
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientNumber, selectedDate, fromDate, toDate, useDateRange]);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -177,10 +198,29 @@ export default function ConsultationSoldes() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Filtres de Date
+              Filtres
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Recherche par numéro de client */}
+            <div className="mb-4">
+              <Label htmlFor="clientNumber" className="flex items-center gap-2 mb-2">
+                <Search className="h-4 w-4" />
+                Numéro du client
+              </Label>
+              <Input
+                id="clientNumber"
+                type="text"
+                placeholder="Entrez le numéro du client (expéditeur ou destinataire)"
+                value={clientNumber}
+                onChange={(e) => setClientNumber(e.target.value)}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Recherche par numéro de téléphone (expéditeur ou destinataire)
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
                 <input
@@ -242,6 +282,37 @@ export default function ConsultationSoldes() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Indicateur de recherche par numéro de client */}
+        {clientNumber && clientNumber.trim() && (
+          <Card className="mb-6 border-l-4 border-l-blue-500 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Search className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      Recherche pour le numéro : 
+                    </p>
+                    <p className="text-lg font-bold text-blue-700 font-mono">
+                      {formatPhoneNumber(clientNumber)}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setClientNumber('');
+                    fetchData();
+                  }}
+                >
+                  Effacer
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Statistiques */}
         {data && (
